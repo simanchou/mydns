@@ -1,0 +1,2 @@
+# mydns
+my local dns
