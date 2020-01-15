@@ -7,8 +7,17 @@
     reload 1m
     fallthrough
   }
+
+  redis example.com {
+    address 127.0.0.1:6379
+    password 123456
+    connect_timeout 100
+    read_timeout 100
+    ttl 360
+  }
+
   # forward . /etc/resolv.conf
-  forward . 114.114.114.114:53
+  #forward . 114.114.114.114:53
   cache 120
   reload 6s
   log
