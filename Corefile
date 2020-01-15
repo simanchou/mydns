@@ -1,0 +1,16 @@
+.:1053 {
+  hosts {
+    192.168.2.97 ns1.mydns.local
+    192.168.2.98 ns2.mydns.local
+    # ttl
+    ttl 60
+    reload 1m
+    fallthrough
+  }
+  # forward . /etc/resolv.conf
+  forward . 114.114.114.114:53
+  cache 120
+  reload 6s
+  log
+  errors
+}
