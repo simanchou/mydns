@@ -49,11 +49,11 @@ var Directives = []string{
 	"secondary",
 	"etcd",
 	"loop",
+	"redis",
 	"forward",
 	"grpc",
 	"erratic",
 	"whoami",
 	"on",
 	"sign",
-	"redis",
 }

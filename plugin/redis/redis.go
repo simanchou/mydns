@@ -375,6 +375,9 @@ func (redis *Redis) get(key string, z *Zone) *Record {
 	if err != nil {
 		return nil
 	}
+
+	fmt.Println("val from redis by HGET: ", val)
+
 	r := new(Record)
 	err = json.Unmarshal([]byte(val), r)
 	if err != nil {
@@ -472,6 +475,9 @@ func (redis *Redis) load(zone string) *Zone {
 	z := new(Zone)
 	z.Name = zone
 	vals, err = redisCon.Strings(reply, nil)
+
+	fmt.Println("HKEYS from redis: ", vals)
+
 	if err != nil {
 		return nil
 	}

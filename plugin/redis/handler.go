@@ -28,8 +28,8 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 		redis.LoadZones()
 	}
 
-	//zone := plugin.Zones(redis.Zones).Matches(qname)
-	zone := "example.com."
+	zone := plugin.Zones(redis.Zones).Matches(qname)
+	//zone := "example.com."
 	fmt.Println("zone : ", zone)
 	if zone == "" {
 		fmt.Println("zone is blank...")
@@ -98,21 +98,21 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	// If there is a CNAME RR in the answers, solve the alias
 	for _, CNAMERecord := range record.CNAME {
-		println(CNAMERecord.Host)
+		fmt.Println("record.CNAME: ", CNAMERecord.Host)
 		var query = strings.TrimSuffix(CNAMERecord.Host, "."+z.Name)
 		records := redis.get(query, z)
 
-		fmt.Printf("\t %+v\n", records)
+		fmt.Printf("records from redis: \t %+v\n", records)
 		answersN := make([]dns.RR, 0, 10)
 		extrasN := make([]dns.RR, 0, 10)
 		answersN, extrasN = redis.A(CNAMERecord.Host, z, records)
 		m.Answer = append(m.Answer, answersN...)
 		m.Extra = append(m.Extra, extrasN...)
 
-		println(query)
-		println(location)
+		fmt.Println("query by trim in cname: ", query)
+		fmt.Println("location from redis: ", location)
 	}
-	println("END ANSWER")
+	fmt.Println("-----END ANSWER")
 
 	state.SizeAndDo(m)
 	m = state.Scrub(m)
