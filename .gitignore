@@ -15,3 +15,4 @@ coverage.txt
 build/
 release/
 vendor/
+*.db

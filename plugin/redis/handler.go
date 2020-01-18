@@ -27,7 +27,7 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	if time.Since(redis.LastZoneUpdate) > zoneUpdateTime {
 		redis.LoadZones()
 	}
-
+	fmt.Println("all zones: ", redis.Zones)
 	zone := plugin.Zones(redis.Zones).Matches(qname)
 	//zone := "example.com."
 	fmt.Println("zone : ", zone)

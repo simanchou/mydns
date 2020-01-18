@@ -4,27 +4,15 @@ package main
 //go:generate go run owners_generate.go
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/coredns/coredns/coremain"
-
+	"github.com/coredns/coredns/plugin/lkvs"
 	// Plug in CoreDNS
 	_ "github.com/coredns/coredns/core/plugin"
 )
 
 func main() {
-	go func() {
-		for {
-			tt()
-			time.Sleep(5 * time.Second)
-		}
-	}()
+
+	go lkvs.RLKVS.APIStart()
 
 	coremain.Run()
-}
-
-func tt() {
-	t := time.Now()
-	fmt.Println(t)
 }
