@@ -141,6 +141,7 @@ func NewZone() *Zone {
 	}
 }
 
+// AddARecordToZone add a record of type A
 func AddARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
 	host := c.Query("host")
 	valid := validation.Validation{}
@@ -168,9 +169,55 @@ func AddARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *g
 			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
 			z.Records.A[subDomain] = append(z.Records.A[subDomain], _a)
 		} else {
+			if z.Records.A == nil {
+				z.Records.A = make(map[string][]ARecord)
+			}
 			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
 			_aRecord = append(_aRecord, _a)
 			z.Records.A[subDomain] = _aRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+// AddAAAARecordToZone add a record of type AAAA
+func AddAAAARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	host := c.Query("host")
+	valid := validation.Validation{}
+	valid.Required(host, "host").Message("主机IP不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_aaaa       AAAARecord
+			_aaaaRecord []AAAARecord
+		)
+		_aaaa.TTL = CheckTTL(uint32(ttl))
+		_aaaa.IP = net.ParseIP(host)
+
+		if _, ok := z.Records.AAAA[subDomain];ok {
+			_index := len(z.Records.AAAA[subDomain])
+			for _, i := range z.Records.AAAA[subDomain] {
+				if i.IP.String() == host {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.IP.String(),
+					}
+				}
+			}
+			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			z.Records.AAAA[subDomain] = append(z.Records.AAAA[subDomain], _aaaa)
+		} else {
+			if z.Records.AAAA == nil {
+				z.Records.AAAA = make(map[string][]AAAARecord)
+			}
+			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_aaaaRecord = append(_aaaaRecord, _aaaa)
+			z.Records.AAAA[subDomain] = _aaaaRecord
 		}
 	} else {
 		for _, err := range valid.Errors {

@@ -79,7 +79,8 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 		if z.Name == "" {
 			z.Name = zoneName
 		}
-
+		fmt.Println("rType: ", rType)
+		fmt.Printf("zone: %#v\n", z)
 		switch strings.ToUpper(rType) {
 		case "A":
 			code, err := AddARecordToZone(z, zoneName, rType, subDomain, ttl, c)
@@ -87,7 +88,12 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
-
+		case "AAAA":
+			code, err := AddAAAARecordToZone(z, zoneName, rType, subDomain, ttl, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
+			}
 		}
 	} else {
 		for _, err := range valid.Errors {
