@@ -124,6 +124,12 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
+		case "CAA":
+			code, err := AddCAARecordToZone(z, zoneName, rType, subDomain, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
+			}
 		}
 	} else {
 		for _, err := range valid.Errors {

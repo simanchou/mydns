@@ -482,6 +482,58 @@ func AddSRVRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c 
 	return SUCCESS, nil
 }
 
+// AddCAARecordToZone add a record of type CAA
+func AddCAARecordToZone(z *Zone, zoneName, rType, subDomain string, c *gin.Context) (errCode int, err *validation.Error){
+	flag := c.Query("flag")
+	tag := c.Query("tag")
+	value := c.Query("value")
+
+	valid := validation.Validation{}
+	valid.Required(flag, "flag").Message("标志位不能为空")
+	valid.Required(tag, "tag").Message("属性标签不能为空")
+	valid.Required(value, "value").Message("属性标签的值不能为空")
+
+	if ! valid.HasErrors(){
+		var (
+			_caa       CAARecord
+			_caaRecord []CAARecord
+		)
+
+		_caa.Flag = uint8(com.StrTo(flag).MustInt())
+		_caa.Tag = tag
+		_caa.Value = value
+
+		if _, ok := z.Records.CAA[subDomain];ok {
+			_index := len(z.Records.CAA[subDomain])
+			for _, i := range z.Records.CAA[subDomain] {
+				if i.Tag == _caa.Tag && i.Value == _caa.Value {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Tag,
+					}
+				}
+			}
+			_caa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_caa.Tag+"|"+_caa.Value+"|"+fmt.Sprintf("%d",_index))
+			z.Records.CAA[subDomain] = append(z.Records.CAA[subDomain], _caa)
+		} else {
+			if z.Records.CAA == nil {
+				z.Records.CAA = make(map[string][]CAARecord)
+			}
+			_caa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_caa.Tag+"|"+_caa.Value+"|"+fmt.Sprintf("%d",0))
+			_caaRecord = append(_caaRecord, _caa)
+			z.Records.CAA[subDomain] = _caaRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {
