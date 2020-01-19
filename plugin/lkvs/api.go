@@ -5,7 +5,6 @@ import (
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/unknwon/com"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -67,7 +66,7 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(rType, "type").Message("记录类型不能为空")
 
-	z := Zone{}
+	z := NewZone()
 	if ! valid.HasErrors() {
 		zoneName = strings.TrimSpace(zoneName)
 		zoneName = strings.Trim(zoneName, ".")
@@ -75,7 +74,7 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 		lkvs.LoadZones()
 
 		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
-			z = _z
+			z = &_z
 		}
 		if z.Name == "" {
 			z.Name = zoneName
@@ -83,30 +82,17 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 
 		switch strings.ToUpper(rType) {
 		case "A":
-			host := c.Query("host")
-			var (
-				_a ARecord
-				_aRecord []ARecord
-			)
-			_a.TTL = uint32(ttl)
-			_a.IP = net.ParseIP(host)
-
-			if _, ok := z.Records.A[subDomain];ok {
-				_index := len(z.Records.A[subDomain])
-				for _, i := range z.Records.A[subDomain] {
-					if i.IP.String() == host {
-						g.Response(http.StatusOK, ERROR_EXIST_RECORD, nil)
-						return
-					}
-				}
-				_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
-				z.Records.A[subDomain] = append(z.Records.A[subDomain], _a)
-			} else {
-				z.Records.A = make(map[string][]ARecord)
-				_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
-				_aRecord = append(_aRecord, _a)
-				z.Records.A[subDomain] = _aRecord
+			code, err := AddARecordToZone(z, zoneName, rType, subDomain, ttl, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
 			}
+
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
 		}
 	}
 	err := lkvs.SaveToDB(z)
