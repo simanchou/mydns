@@ -424,6 +424,64 @@ func AddMXRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *
 	return SUCCESS, nil
 }
 
+// AddSRVRecordToZone add a record of type SRV
+func AddSRVRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	priority := c.Query("priority")
+	weight := c.Query("weight")
+	port := c.Query("port")
+	target := c.Query("target")
+
+	valid := validation.Validation{}
+	valid.Required(priority, "priority").Message("优先级不能为空")
+	valid.Required(weight, "weight").Message("权重不能为空")
+	valid.Required(port, "port").Message("服务端口不能为空")
+	valid.Required(target, "target").Message("服务地址不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_srv       SRVRecord
+			_srvRecord []SRVRecord
+		)
+
+		target = strings.TrimSpace(target)
+		target = strings.Trim(target, ".")
+		target = target + "."
+
+		_srv.TTL = CheckTTL(uint32(ttl))
+		_srv.Priority = uint16(com.StrTo(priority).MustInt())
+		_srv.Weight = uint16(com.StrTo(weight).MustInt())
+		_srv.Port = uint16(com.StrTo(port).MustInt())
+		_srv.Target = target
+
+		if _, ok := z.Records.SRV[subDomain];ok {
+			_index := len(z.Records.SRV[subDomain])
+			for _, i := range z.Records.SRV[subDomain] {
+				if i.Target == _srv.Target && i.Port == _srv.Port{
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Target,
+					}
+				}
+			}
+			_srv.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_srv.Target+"|"+fmt.Sprintf("%d",_srv.Port)+"|"+fmt.Sprintf("%d",_index))
+			z.Records.SRV[subDomain] = append(z.Records.SRV[subDomain], _srv)
+		} else {
+			if z.Records.SRV == nil {
+				z.Records.SRV = make(map[string][]SRVRecord)
+			}
+			_srv.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_srv.Target+"|"+fmt.Sprintf("%d",_srv.Port)+"|"+fmt.Sprintf("%d",0))
+			_srvRecord = append(_srvRecord, _srv)
+			z.Records.SRV[subDomain] = _srvRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {

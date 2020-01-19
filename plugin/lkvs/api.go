@@ -118,6 +118,12 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
+		case "SRV":
+			code, err := AddSRVRecordToZone(z, zoneName, rType, subDomain, ttl, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
+			}
 		}
 	} else {
 		for _, err := range valid.Errors {
