@@ -227,6 +227,51 @@ func AddAAAARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c
 	return SUCCESS, nil
 }
 
+
+// AddTXTRecordToZone add a record of type TXT
+func AddTXTRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	text := c.Query("text")
+	valid := validation.Validation{}
+	valid.Required(text, "text").Message("主机IP不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_txt       TXTRecord
+			_txtRecord []TXTRecord
+		)
+		_txt.TTL = CheckTTL(uint32(ttl))
+		_txt.Text = text
+
+		if _, ok := z.Records.TXT[subDomain];ok {
+			_index := len(z.Records.TXT[subDomain])
+			for _, i := range z.Records.TXT[subDomain] {
+				if i.Text == text {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Text,
+					}
+				}
+			}
+			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+text+"|"+fmt.Sprintf("%d",_index))
+			z.Records.TXT[subDomain] = append(z.Records.TXT[subDomain], _txt)
+		} else {
+			if z.Records.TXT == nil {
+				z.Records.TXT = make(map[string][]TXTRecord)
+			}
+			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+text+"|"+fmt.Sprintf("%d",0))
+			_txtRecord = append(_txtRecord, _txt)
+			z.Records.TXT[subDomain] = _txtRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {

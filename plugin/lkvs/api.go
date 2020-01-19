@@ -94,6 +94,12 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
+		case "TXT":
+			code, err := AddTXTRecordToZone(z, zoneName, rType, subDomain, ttl, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
+			}
 		}
 	} else {
 		for _, err := range valid.Errors {
