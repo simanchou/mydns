@@ -112,6 +112,12 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
+		case "MX":
+			code, err := AddMXRecordToZone(z, zoneName, rType, subDomain, ttl, c)
+			if err != nil {
+				g.Response(http.StatusOK, code, err)
+				return
+			}
 		}
 	} else {
 		for _, err := range valid.Errors {

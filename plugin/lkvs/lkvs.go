@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
+	"github.com/unknwon/com"
 	"log"
 	"net"
 	"strings"
@@ -359,6 +360,61 @@ func AddNSRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *
 			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
 			_nsRecord = append(_nsRecord, _ns)
 			z.Records.NS[subDomain] = _nsRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+// AddMXRecordToZone add a record of type MX
+func AddMXRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	host := c.Query("host")
+	preference := c.Query("preference")
+	valid := validation.Validation{}
+	valid.Required(host, "host").Message("目标主机不能为空")
+	valid.Required(preference, "preference").Message("优先级不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_mx       MXRecord
+			_mxRecord []MXRecord
+		)
+
+		host = strings.TrimSpace(host)
+		host = strings.Trim(host, ".")
+		host = host + "."
+
+		_mx.TTL = CheckTTL(uint32(ttl))
+		_mx.Host = host
+		_mx.Preference = uint16(com.StrTo(preference).MustInt())
+
+		if _mx.Preference == 0 {
+			_mx.Preference = 10
+		}
+
+		if _, ok := z.Records.MX[subDomain];ok {
+			_index := len(z.Records.MX[subDomain])
+			for _, i := range z.Records.MX[subDomain] {
+				if i.Host == host {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Host,
+					}
+				}
+			}
+			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			z.Records.MX[subDomain] = append(z.Records.MX[subDomain], _mx)
+		} else {
+			if z.Records.MX == nil {
+				z.Records.MX = make(map[string][]MXRecord)
+			}
+			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_mxRecord = append(_mxRecord, _mx)
+			z.Records.MX[subDomain] = _mxRecord
 		}
 	} else {
 		for _, err := range valid.Errors {
