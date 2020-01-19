@@ -320,6 +320,53 @@ func AddCNAMERecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, 
 	return SUCCESS, nil
 }
 
+// AddNSRecordToZone add a record of type NS
+func AddNSRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	host := c.Query("host")
+	valid := validation.Validation{}
+	valid.Required(host, "host").Message("目标主机不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_ns       NSRecord
+			_nsRecord []NSRecord
+		)
+
+		host = strings.TrimSpace(host)
+		host = strings.Trim(host, ".")
+		host = host + "."
+
+		_ns.TTL = CheckTTL(uint32(ttl))
+		_ns.Host = host
+
+		if _, ok := z.Records.NS[subDomain];ok {
+			_index := len(z.Records.NS[subDomain])
+			for _, i := range z.Records.NS[subDomain] {
+				if i.Host == host {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Host,
+					}
+				}
+			}
+			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			z.Records.NS[subDomain] = append(z.Records.NS[subDomain], _ns)
+		} else {
+			if z.Records.NS == nil {
+				z.Records.NS = make(map[string][]NSRecord)
+			}
+			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_nsRecord = append(_nsRecord, _ns)
+			z.Records.NS[subDomain] = _nsRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
 
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
