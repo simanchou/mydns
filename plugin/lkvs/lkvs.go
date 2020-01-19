@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -262,6 +263,54 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c 
 			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+text+"|"+fmt.Sprintf("%d",0))
 			_txtRecord = append(_txtRecord, _txt)
 			z.Records.TXT[subDomain] = _txtRecord
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+// AddCNAMERecordToZone add a record of type CNAME
+func AddCNAMERecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	host := c.Query("host")
+	valid := validation.Validation{}
+	valid.Required(host, "host").Message("目标主机不能为空")
+	if ! valid.HasErrors(){
+		var (
+			_cname       CNAMERecord
+			_cnameRecord []CNAMERecord
+		)
+
+		host = strings.TrimSpace(host)
+		host = strings.Trim(host, ".")
+		host = host + "."
+
+		_cname.TTL = CheckTTL(uint32(ttl))
+		_cname.Host = host
+
+		if _, ok := z.Records.CNAME[subDomain];ok {
+			_index := len(z.Records.CNAME[subDomain])
+			for _, i := range z.Records.CNAME[subDomain] {
+				if i.Host == host {
+					return ERROR_EXIST_RECORD, &validation.Error{
+						Message:GetCodeMsg(ERROR_EXIST_RECORD),
+						Key:subDomain,
+						Name:subDomain,
+						Value:i.Host,
+					}
+				}
+			}
+			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			z.Records.CNAME[subDomain] = append(z.Records.CNAME[subDomain], _cname)
+		} else {
+			if z.Records.CNAME == nil {
+				z.Records.CNAME = make(map[string][]CNAMERecord)
+			}
+			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_cnameRecord = append(_cnameRecord, _cname)
+			z.Records.CNAME[subDomain] = _cnameRecord
 		}
 	} else {
 		for _, err := range valid.Errors {
