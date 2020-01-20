@@ -120,7 +120,7 @@ type CAARecord struct {
 type SOARecord struct {
 	TTL     uint32 `json:"ttl,omitempty"`
 	Ns      string `json:"ns"`
-	MBox    string `json:"MBox"`
+	MBox    string `json:"mail"`
 	Refresh uint32 `json:"refresh"`
 	Retry   uint32 `json:"retry"`
 	Expire  uint32 `json:"expire"`
@@ -144,9 +144,11 @@ func NewZone() *Zone {
 }
 
 // AddARecordToZone add a record of type A
-func AddARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("主机IP不能为空")
 	if ! valid.HasErrors(){
 		var (
@@ -187,9 +189,11 @@ func AddARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *g
 }
 
 // AddAAAARecordToZone add a record of type AAAA
-func AddAAAARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddAAAARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("主机IP不能为空")
 	if ! valid.HasErrors(){
 		var (
@@ -231,9 +235,11 @@ func AddAAAARecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c
 
 
 // AddTXTRecordToZone add a record of type TXT
-func AddTXTRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	text := c.Query("text")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(text, "text").Message("主机IP不能为空")
 	if ! valid.HasErrors(){
 		var (
@@ -274,9 +280,11 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c 
 }
 
 // AddCNAMERecordToZone add a record of type CNAME
-func AddCNAMERecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddCNAMERecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("目标主机不能为空")
 	if ! valid.HasErrors(){
 		var (
@@ -322,9 +330,11 @@ func AddCNAMERecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, 
 }
 
 // AddNSRecordToZone add a record of type NS
-func AddNSRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddNSRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("目标主机不能为空")
 	if ! valid.HasErrors(){
 		var (
@@ -370,10 +380,12 @@ func AddNSRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *
 }
 
 // AddMXRecordToZone add a record of type MX
-func AddMXRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	host := c.Query("host")
 	preference := c.Query("preference")
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("目标主机不能为空")
 	valid.Required(preference, "preference").Message("优先级不能为空")
 	if ! valid.HasErrors(){
@@ -425,13 +437,15 @@ func AddMXRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *
 }
 
 // AddSRVRecordToZone add a record of type SRV
-func AddSRVRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddSRVRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	priority := c.Query("priority")
 	weight := c.Query("weight")
 	port := c.Query("port")
 	target := c.Query("target")
 
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(priority, "priority").Message("优先级不能为空")
 	valid.Required(weight, "weight").Message("权重不能为空")
 	valid.Required(port, "port").Message("服务端口不能为空")
@@ -483,12 +497,14 @@ func AddSRVRecordToZone(z *Zone, zoneName, rType, subDomain string,  ttl int, c 
 }
 
 // AddCAARecordToZone add a record of type CAA
-func AddCAARecordToZone(z *Zone, zoneName, rType, subDomain string, c *gin.Context) (errCode int, err *validation.Error){
+func AddCAARecordToZone(z *Zone, zoneName, rType string, c *gin.Context) (errCode int, err *validation.Error){
+	subDomain := c.Query("sub")
 	flag := c.Query("flag")
 	tag := c.Query("tag")
 	value := c.Query("value")
 
 	valid := validation.Validation{}
+	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(flag, "flag").Message("标志位不能为空")
 	valid.Required(tag, "tag").Message("属性标签不能为空")
 	valid.Required(value, "value").Message("属性标签的值不能为空")
@@ -533,6 +549,56 @@ func AddCAARecordToZone(z *Zone, zoneName, rType, subDomain string, c *gin.Conte
 	return SUCCESS, nil
 }
 
+// AddSOARecordToZone add a record of type SOA
+func AddSOARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+	ns := c.Query("ns")
+	mBox := c.DefaultQuery("mail", "master."+zoneName)
+	refresh := c.DefaultQuery("refresh","3600")
+	retry := c.DefaultQuery("retry","600")
+	expire := c.DefaultQuery("expire", "86400")
+	minTTL := c.DefaultQuery("minttl","3600")
+
+	valid := validation.Validation{}
+	valid.Required(ns, "ns").Message("NS服务器不能为空")
+
+	if ! valid.HasErrors(){
+		var (
+			_soa       SOARecord
+		)
+
+		ns = strings.TrimSpace(ns)
+		ns = strings.Trim(ns, ".")
+		ns = ns + "."
+
+		_soa.TTL = CheckTTL(uint32(ttl))
+		_soa.Ns = ns
+		_soa.MBox = mBox
+		_soa.Refresh = uint32(com.StrTo(refresh).MustInt())
+		_soa.Retry = uint32(com.StrTo(retry).MustInt())
+		_soa.Expire = uint32(com.StrTo(expire).MustInt())
+		_soa.MinTTL = uint32(com.StrTo(minTTL).MustInt())
+
+		if z.Records.SOA.Ns != "" {
+			return ERROR_EXIST_RECORD, &validation.Error{
+				Message:GetCodeMsg(ERROR_EXIST_RECORD),
+				Key:rType,
+				Name:rType,
+				Value:_soa.MBox,
+				}
+		} else {
+			z.Records.SOA = _soa
+		}
+	} else {
+		for _, err := range valid.Errors {
+			return INVALID_PARAMS, err
+		}
+	}
+	return SUCCESS, nil
+}
+
+func (lkvs *LKVS) serial() uint32 {
+	return uint32(time.Now().Unix())
+}
 
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
