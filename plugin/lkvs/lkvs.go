@@ -161,7 +161,7 @@ func AddARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context)
 		if _, ok := z.Records.A[subDomain];ok {
 			_index := len(z.Records.A[subDomain])
 			for _, i := range z.Records.A[subDomain] {
-				if i.IP.String() == host {
+				if i.IP.String() == _a.IP.String() {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -170,13 +170,13 @@ func AddARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context)
 					}
 				}
 			}
-			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_a.IP.String()+"|"+fmt.Sprintf("%d",_index))
 			z.Records.A[subDomain] = append(z.Records.A[subDomain], _a)
 		} else {
 			if z.Records.A == nil {
 				z.Records.A = make(map[string][]ARecord)
 			}
-			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_a.IP.String()+"|"+fmt.Sprintf("%d",0))
 			_aRecord = append(_aRecord, _a)
 			z.Records.A[subDomain] = _aRecord
 		}
@@ -206,7 +206,7 @@ func AddAAAARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Conte
 		if _, ok := z.Records.AAAA[subDomain];ok {
 			_index := len(z.Records.AAAA[subDomain])
 			for _, i := range z.Records.AAAA[subDomain] {
-				if i.IP.String() == host {
+				if i.IP.String() == _aaaa.IP.String() {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -215,13 +215,13 @@ func AddAAAARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Conte
 					}
 				}
 			}
-			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_aaaa.IP.String()+"|"+fmt.Sprintf("%d",_index))
 			z.Records.AAAA[subDomain] = append(z.Records.AAAA[subDomain], _aaaa)
 		} else {
 			if z.Records.AAAA == nil {
 				z.Records.AAAA = make(map[string][]AAAARecord)
 			}
-			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_aaaa.IP.String()+"|"+fmt.Sprintf("%d",0))
 			_aaaaRecord = append(_aaaaRecord, _aaaa)
 			z.Records.AAAA[subDomain] = _aaaaRecord
 		}
@@ -252,7 +252,7 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 		if _, ok := z.Records.TXT[subDomain];ok {
 			_index := len(z.Records.TXT[subDomain])
 			for _, i := range z.Records.TXT[subDomain] {
-				if i.Text == text {
+				if i.Text == _txt.Text {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -261,13 +261,13 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 					}
 				}
 			}
-			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+text+"|"+fmt.Sprintf("%d",_index))
+			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_txt.Text+"|"+fmt.Sprintf("%d",_index))
 			z.Records.TXT[subDomain] = append(z.Records.TXT[subDomain], _txt)
 		} else {
 			if z.Records.TXT == nil {
 				z.Records.TXT = make(map[string][]TXTRecord)
 			}
-			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+text+"|"+fmt.Sprintf("%d",0))
+			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_txt.Text+"|"+fmt.Sprintf("%d",0))
 			_txtRecord = append(_txtRecord, _txt)
 			z.Records.TXT[subDomain] = _txtRecord
 		}
@@ -302,7 +302,7 @@ func AddCNAMERecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Cont
 		if _, ok := z.Records.CNAME[subDomain];ok {
 			_index := len(z.Records.CNAME[subDomain])
 			for _, i := range z.Records.CNAME[subDomain] {
-				if i.Host == host {
+				if i.Host == _cname.Host {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -311,13 +311,13 @@ func AddCNAMERecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Cont
 					}
 				}
 			}
-			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_cname.Host+"|"+fmt.Sprintf("%d",_index))
 			z.Records.CNAME[subDomain] = append(z.Records.CNAME[subDomain], _cname)
 		} else {
 			if z.Records.CNAME == nil {
 				z.Records.CNAME = make(map[string][]CNAMERecord)
 			}
-			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_cname.Host+"|"+fmt.Sprintf("%d",0))
 			_cnameRecord = append(_cnameRecord, _cname)
 			z.Records.CNAME[subDomain] = _cnameRecord
 		}
@@ -352,7 +352,7 @@ func AddNSRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 		if _, ok := z.Records.NS[subDomain];ok {
 			_index := len(z.Records.NS[subDomain])
 			for _, i := range z.Records.NS[subDomain] {
-				if i.Host == host {
+				if i.Host == _ns.Host {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -361,13 +361,13 @@ func AddNSRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 					}
 				}
 			}
-			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_ns.Host+"|"+fmt.Sprintf("%d",_index))
 			z.Records.NS[subDomain] = append(z.Records.NS[subDomain], _ns)
 		} else {
 			if z.Records.NS == nil {
 				z.Records.NS = make(map[string][]NSRecord)
 			}
-			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_ns.Host+"|"+fmt.Sprintf("%d",0))
 			_nsRecord = append(_nsRecord, _ns)
 			z.Records.NS[subDomain] = _nsRecord
 		}
@@ -409,7 +409,7 @@ func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 		if _, ok := z.Records.MX[subDomain];ok {
 			_index := len(z.Records.MX[subDomain])
 			for _, i := range z.Records.MX[subDomain] {
-				if i.Host == host {
+				if i.Host == _mx.Host {
 					return ERROR_EXIST_RECORD, &validation.Error{
 						Message:GetCodeMsg(ERROR_EXIST_RECORD),
 						Key:subDomain,
@@ -418,13 +418,13 @@ func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 					}
 				}
 			}
-			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",_index))
+			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_mx.Host+"|"+fmt.Sprintf("%d",_index))
 			z.Records.MX[subDomain] = append(z.Records.MX[subDomain], _mx)
 		} else {
 			if z.Records.MX == nil {
 				z.Records.MX = make(map[string][]MXRecord)
 			}
-			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+host+"|"+fmt.Sprintf("%d",0))
+			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_mx.Host+"|"+fmt.Sprintf("%d",0))
 			_mxRecord = append(_mxRecord, _mx)
 			z.Records.MX[subDomain] = _mxRecord
 		}
