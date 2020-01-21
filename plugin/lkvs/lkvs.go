@@ -240,14 +240,14 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 	text := c.Query("text")
 	valid := validation.Validation{}
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
-	valid.Required(text, "text").Message("主机IP不能为空")
+	valid.Required(text, "text").Message("text不能为空")
 	if ! valid.HasErrors(){
 		var (
 			_txt       TXTRecord
 			_txtRecord []TXTRecord
 		)
 		_txt.TTL = CheckTTL(uint32(ttl))
-		_txt.Text = text
+		_txt.Text  = DeleteSpace(text)
 
 		if _, ok := z.Records.TXT[subDomain];ok {
 			_index := len(z.Records.TXT[subDomain])
@@ -605,6 +605,7 @@ func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BucketName))
 		c := b.Cursor()
+		var _zoneName []string
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			_z := Zone{}
 			err := json.Unmarshal(v, &_z)
@@ -612,7 +613,8 @@ func (lkvs *LKVS) LoadZones() {
 				fmt.Println("decode fail, error: ", err)
 				return err
 			}
-			lkvs.ZonesName = append(lkvs.ZonesName, _z.Name)
+			_zoneName = append(_zoneName, _z.Name)
+			lkvs.ZonesName = _zoneName
 			lkvs.ZonesWithRecords[_z.Name] = _z
 		}
 		return nil
@@ -658,4 +660,21 @@ func CheckTTL(ttl uint32) uint32 {
 	}
 
 	return ttl
+}
+
+func DeleteSpace(str string) string {
+	_tmp := strings.Fields(str)
+	if len(_tmp) == 0 {
+		return ""
+	}
+	if len(_tmp) == 1 {
+		return str
+	}
+
+	_str := ""
+	for _, s := range _tmp {
+		_str += s
+	}
+
+	return _str
 }
