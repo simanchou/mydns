@@ -38,8 +38,21 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 
 	switch qtype {
 	case "A":
-		record := zone.Records
-		answers, extras = lkvs.A(qname, zone, record)
+		answers, extras = lkvs.A(qname, zone)
+	case "AAAA":
+		answers, extras = lkvs.AAAA(qname, zone)
+	case "TXT":
+		answers, extras = lkvs.TXT(qname, zone)
+	case "CNAME":
+		answers, extras = lkvs.CNAME(qname, zone)
+	case "MX":
+		answers, extras = lkvs.MX(qname, zone)
+	case "SRV":
+		answers, extras = lkvs.SRV(qname, zone)
+	case "CAA":
+		answers, extras = lkvs.CAA(qname, zone)
+	case "SOA":
+		answers, extras = lkvs.SOA(qname, zone)
 	default:
 		return lkvs.errorResponse(state, dns.RcodeNotImplemented, nil)
 	}

@@ -69,6 +69,9 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 		zoneName = strings.TrimSpace(zoneName)
 		zoneName = strings.Trim(zoneName, ".")
 		zoneName = zoneName + "."
+		z.SOA.MBox = fmt.Sprintf("admin.%s",zoneName)
+		z.SOA.Ns = "ns.mydns.local."
+
 		lkvs.LoadZones()
 
 		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
@@ -81,55 +84,43 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 		fmt.Printf("zone: %#v\n", z)
 		switch strings.ToUpper(rType) {
 		case "A":
-			code, err := AddARecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddARecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "AAAA":
-			code, err := AddAAAARecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddAAAARecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "TXT":
-			code, err := AddTXTRecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddTXTRecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "CNAME":
-			code, err := AddCNAMERecordToZone(z, zoneName, rType, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "NS":
-			code, err := AddNSRecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddCNAMERecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "MX":
-			code, err := AddMXRecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddMXRecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "SRV":
-			code, err := AddSRVRecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddSRVRecordToZone(z, ttl, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return
 			}
 		case "CAA":
-			code, err := AddCAARecordToZone(z, zoneName, rType, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "SOA":
-			code, err := AddSOARecordToZone(z, zoneName, rType, ttl, c)
+			code, err := AddCAARecordToZone(z, c)
 			if err != nil {
 				g.Response(http.StatusOK, code, err)
 				return

@@ -38,23 +38,42 @@ type LKVS struct {
 
 // Zone domain zone with records
 type Zone struct {
-	Name    string `json:"name,omitempty"`
-	Records Record `json:"records,omitempty"`
+	Name    string             `json:"name,omitempty"`
+	SOA     SOARecord          `json:"soa,omitempty"`
+	Records map[string]*Record `json:"records,omitempty"`
 }
 
 // Record record of domain
 type Record struct {
-	A     map[string][]ARecord     `json:"a,omitempty"`
-	AAAA  map[string][]AAAARecord  `json:"aaaa,omitempty"`
-	TXT   map[string][]TXTRecord   `json:"txt,omitempty"`
-	CNAME map[string][]CNAMERecord `json:"cname,omitempty"`
-	NS    map[string][]NSRecord    `json:"ns,omitempty"`
-	MX    map[string][]MXRecord    `json:"mx,omitempty"`
-	SRV   map[string][]SRVRecord   `json:"srv,omitempty"`
-	CAA   map[string][]CAARecord   `json:"caa,omitempty"`
-	SOA   SOARecord                `json:"soa,omitempty"`
+	ID         string `json:"id"`
+	SubDomain  string `json:"subdomain"`
+	TTL        uint32 `json:"ttl"`
+	Type       string `json:"type"`
+	IP         net.IP `json:"ip,omitempty"`
+	Text       string `json:"text,omitempty"`
+	Host       string `json:"host,omitempty"`
+	Preference uint16 `json:"preference,omitempty"`
+	Priority   uint16 `json:"priority,omitempty"`
+	Weight     uint16 `json:"weight,omitempty"`
+	Port       uint16 `json:"port,omitempty"`
+	Target     string `json:"target,omitempty"`
+	Flag       uint8  `json:"flag,omitempty"`
+	Tag        string `json:"tag,omitempty"`
+	Value      string `json:"value,omitempty"`
 }
 
+// SOARecord type soa record
+type SOARecord struct {
+	TTL     uint32 `json:"ttl,omitempty"`
+	Ns      string `json:"ns"`
+	MBox    string `json:"mail"`
+	Refresh uint32 `json:"refresh"`
+	Retry   uint32 `json:"retry"`
+	Expire  uint32 `json:"expire"`
+	MinTTL  uint32 `json:"minttl"`
+}
+
+/*
 // ARecord type a record
 type ARecord struct {
 	ID  string `json:"id"`
@@ -127,58 +146,57 @@ type SOARecord struct {
 	MinTTL  uint32 `json:"minttl"`
 }
 
+*/
+
 func NewZone() *Zone {
 	return &Zone{
-		Records:Record{
-			A:     make(map[string][]ARecord),
-			AAAA:  make(map[string][]AAAARecord),
-			TXT:   make(map[string][]TXTRecord),
-			CNAME: make(map[string][]CNAMERecord),
-			NS:    make(map[string][]NSRecord),
-			MX:    make(map[string][]MXRecord),
-			SRV:   make(map[string][]SRVRecord),
-			CAA:   make(map[string][]CAARecord),
-			SOA:   SOARecord{},
+		SOA: SOARecord{
+			TTL:     defaultTTL,
+			Refresh: 3600,
+			Retry:   600,
+			Expire:  86400,
+			MinTTL:  3600,
 		},
+		Records: make(map[string]*Record),
+	}
+}
+
+func NewRecord() *Record {
+	return &Record{
+		ID:  GenerateRecordID(),
+		TTL: defaultTTL,
 	}
 }
 
 // AddARecordToZone add a record of type A
-func AddARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddARecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("主机IP不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_a ARecord
-			_aRecord []ARecord
-		)
-		_a.TTL = CheckTTL(uint32(ttl))
-		_a.IP = net.ParseIP(host)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "A"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.IP = net.ParseIP(host)
 
-		if _, ok := z.Records.A[subDomain];ok {
-			_index := len(z.Records.A[subDomain])
-			for _, i := range z.Records.A[subDomain] {
-				if i.IP.String() == _a.IP.String() {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.IP.String(),
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.IP.String() == _record.IP.String() {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_a.IP.String()+"|"+fmt.Sprintf("%d",_index))
-			z.Records.A[subDomain] = append(z.Records.A[subDomain], _a)
-		} else {
-			if z.Records.A == nil {
-				z.Records.A = make(map[string][]ARecord)
-			}
-			_a.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_a.IP.String()+"|"+fmt.Sprintf("%d",0))
-			_aRecord = append(_aRecord, _a)
-			z.Records.A[subDomain] = _aRecord
+		}
+
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -189,41 +207,34 @@ func AddARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context)
 }
 
 // AddAAAARecordToZone add a record of type AAAA
-func AddAAAARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddAAAARecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("主机IP不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_aaaa       AAAARecord
-			_aaaaRecord []AAAARecord
-		)
-		_aaaa.TTL = CheckTTL(uint32(ttl))
-		_aaaa.IP = net.ParseIP(host)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "AAAA"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.IP = net.ParseIP(host)
 
-		if _, ok := z.Records.AAAA[subDomain];ok {
-			_index := len(z.Records.AAAA[subDomain])
-			for _, i := range z.Records.AAAA[subDomain] {
-				if i.IP.String() == _aaaa.IP.String() {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.IP.String(),
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.IP.String() == _record.IP.String() {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_aaaa.IP.String()+"|"+fmt.Sprintf("%d",_index))
-			z.Records.AAAA[subDomain] = append(z.Records.AAAA[subDomain], _aaaa)
-		} else {
-			if z.Records.AAAA == nil {
-				z.Records.AAAA = make(map[string][]AAAARecord)
-			}
-			_aaaa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_aaaa.IP.String()+"|"+fmt.Sprintf("%d",0))
-			_aaaaRecord = append(_aaaaRecord, _aaaa)
-			z.Records.AAAA[subDomain] = _aaaaRecord
+		}
+
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -233,43 +244,35 @@ func AddAAAARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Conte
 	return SUCCESS, nil
 }
 
-
 // AddTXTRecordToZone add a record of type TXT
-func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddTXTRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	text := c.Query("text")
 	valid := validation.Validation{}
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(text, "text").Message("text不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_txt       TXTRecord
-			_txtRecord []TXTRecord
-		)
-		_txt.TTL = CheckTTL(uint32(ttl))
-		_txt.Text  = DeleteSpace(text)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "TXT"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.Text = DeleteSpace(text)
 
-		if _, ok := z.Records.TXT[subDomain];ok {
-			_index := len(z.Records.TXT[subDomain])
-			for _, i := range z.Records.TXT[subDomain] {
-				if i.Text == _txt.Text {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Text,
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Text == _record.Text {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_txt.Text+"|"+fmt.Sprintf("%d",_index))
-			z.Records.TXT[subDomain] = append(z.Records.TXT[subDomain], _txt)
-		} else {
-			if z.Records.TXT == nil {
-				z.Records.TXT = make(map[string][]TXTRecord)
-			}
-			_txt.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_txt.Text+"|"+fmt.Sprintf("%d",0))
-			_txtRecord = append(_txtRecord, _txt)
-			z.Records.TXT[subDomain] = _txtRecord
+		}
+
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -280,96 +283,34 @@ func AddTXTRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 }
 
 // AddCNAMERecordToZone add a record of type CNAME
-func AddCNAMERecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddCNAMERecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	host := c.Query("host")
 	valid := validation.Validation{}
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("目标主机不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_cname       CNAMERecord
-			_cnameRecord []CNAMERecord
-		)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "CNAME"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.Host = CheckHost(host)
 
-		host = strings.TrimSpace(host)
-		host = strings.Trim(host, ".")
-		host = host + "."
-
-		_cname.TTL = CheckTTL(uint32(ttl))
-		_cname.Host = host
-
-		if _, ok := z.Records.CNAME[subDomain];ok {
-			_index := len(z.Records.CNAME[subDomain])
-			for _, i := range z.Records.CNAME[subDomain] {
-				if i.Host == _cname.Host {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Host,
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Host == _record.Host {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_cname.Host+"|"+fmt.Sprintf("%d",_index))
-			z.Records.CNAME[subDomain] = append(z.Records.CNAME[subDomain], _cname)
-		} else {
-			if z.Records.CNAME == nil {
-				z.Records.CNAME = make(map[string][]CNAMERecord)
-			}
-			_cname.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_cname.Host+"|"+fmt.Sprintf("%d",0))
-			_cnameRecord = append(_cnameRecord, _cname)
-			z.Records.CNAME[subDomain] = _cnameRecord
 		}
-	} else {
-		for _, err := range valid.Errors {
-			return INVALID_PARAMS, err
-		}
-	}
-	return SUCCESS, nil
-}
 
-// AddNSRecordToZone add a record of type NS
-func AddNSRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
-	subDomain := c.Query("sub")
-	host := c.Query("host")
-	valid := validation.Validation{}
-	valid.Required(subDomain, "sub").Message("子域名不能为空")
-	valid.Required(host, "host").Message("目标主机不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_ns       NSRecord
-			_nsRecord []NSRecord
-		)
-
-		host = strings.TrimSpace(host)
-		host = strings.Trim(host, ".")
-		host = host + "."
-
-		_ns.TTL = CheckTTL(uint32(ttl))
-		_ns.Host = host
-
-		if _, ok := z.Records.NS[subDomain];ok {
-			_index := len(z.Records.NS[subDomain])
-			for _, i := range z.Records.NS[subDomain] {
-				if i.Host == _ns.Host {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Host,
-					}
-				}
-			}
-			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_ns.Host+"|"+fmt.Sprintf("%d",_index))
-			z.Records.NS[subDomain] = append(z.Records.NS[subDomain], _ns)
-		} else {
-			if z.Records.NS == nil {
-				z.Records.NS = make(map[string][]NSRecord)
-			}
-			_ns.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_ns.Host+"|"+fmt.Sprintf("%d",0))
-			_nsRecord = append(_nsRecord, _ns)
-			z.Records.NS[subDomain] = _nsRecord
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -380,7 +321,7 @@ func AddNSRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 }
 
 // AddMXRecordToZone add a record of type MX
-func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddMXRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	host := c.Query("host")
 	preference := c.Query("preference")
@@ -388,46 +329,35 @@ func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 	valid.Required(subDomain, "sub").Message("子域名不能为空")
 	valid.Required(host, "host").Message("目标主机不能为空")
 	valid.Required(preference, "preference").Message("优先级不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_mx       MXRecord
-			_mxRecord []MXRecord
-		)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "MX"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.Host = CheckHost(host)
+		_r.Preference = uint16(com.StrTo(preference).MustInt())
 
-		host = strings.TrimSpace(host)
-		host = strings.Trim(host, ".")
-		host = host + "."
-
-		_mx.TTL = CheckTTL(uint32(ttl))
-		_mx.Host = host
-		_mx.Preference = uint16(com.StrTo(preference).MustInt())
-
-		if _mx.Preference == 0 {
-			_mx.Preference = 10
+		if _r.Preference == 0 {
+			_r.Preference = 10
 		}
 
-		if _, ok := z.Records.MX[subDomain];ok {
-			_index := len(z.Records.MX[subDomain])
-			for _, i := range z.Records.MX[subDomain] {
-				if i.Host == _mx.Host {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Host,
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Host == _record.Host {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_mx.Host+"|"+fmt.Sprintf("%d",_index))
-			z.Records.MX[subDomain] = append(z.Records.MX[subDomain], _mx)
-		} else {
-			if z.Records.MX == nil {
-				z.Records.MX = make(map[string][]MXRecord)
-			}
-			_mx.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_mx.Host+"|"+fmt.Sprintf("%d",0))
-			_mxRecord = append(_mxRecord, _mx)
-			z.Records.MX[subDomain] = _mxRecord
 		}
+
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
+		}
+
 	} else {
 		for _, err := range valid.Errors {
 			return INVALID_PARAMS, err
@@ -437,7 +367,7 @@ func AddMXRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context
 }
 
 // AddSRVRecordToZone add a record of type SRV
-func AddSRVRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
+func AddSRVRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	priority := c.Query("priority")
 	weight := c.Query("weight")
@@ -450,43 +380,31 @@ func AddSRVRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 	valid.Required(weight, "weight").Message("权重不能为空")
 	valid.Required(port, "port").Message("服务端口不能为空")
 	valid.Required(target, "target").Message("服务地址不能为空")
-	if ! valid.HasErrors(){
-		var (
-			_srv       SRVRecord
-			_srvRecord []SRVRecord
-		)
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "SRV"
+		_r.SubDomain = subDomain
+		_r.TTL = CheckTTL(uint32(ttl))
+		_r.Target = CheckHost(target)
+		_r.Priority = uint16(com.StrTo(priority).MustInt())
+		_r.Weight = uint16(com.StrTo(weight).MustInt())
+		_r.Port = uint16(com.StrTo(port).MustInt())
 
-		target = strings.TrimSpace(target)
-		target = strings.Trim(target, ".")
-		target = target + "."
-
-		_srv.TTL = CheckTTL(uint32(ttl))
-		_srv.Priority = uint16(com.StrTo(priority).MustInt())
-		_srv.Weight = uint16(com.StrTo(weight).MustInt())
-		_srv.Port = uint16(com.StrTo(port).MustInt())
-		_srv.Target = target
-
-		if _, ok := z.Records.SRV[subDomain];ok {
-			_index := len(z.Records.SRV[subDomain])
-			for _, i := range z.Records.SRV[subDomain] {
-				if i.Target == _srv.Target && i.Port == _srv.Port{
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Target,
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Target == _record.Target && _r.Port == _record.Port {
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_srv.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_srv.Target+"|"+fmt.Sprintf("%d",_srv.Port)+"|"+fmt.Sprintf("%d",_index))
-			z.Records.SRV[subDomain] = append(z.Records.SRV[subDomain], _srv)
-		} else {
-			if z.Records.SRV == nil {
-				z.Records.SRV = make(map[string][]SRVRecord)
-			}
-			_srv.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_srv.Target+"|"+fmt.Sprintf("%d",_srv.Port)+"|"+fmt.Sprintf("%d",0))
-			_srvRecord = append(_srvRecord, _srv)
-			z.Records.SRV[subDomain] = _srvRecord
+		}
+
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -497,7 +415,7 @@ func AddSRVRecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Contex
 }
 
 // AddCAARecordToZone add a record of type CAA
-func AddCAARecordToZone(z *Zone, zoneName, rType string, c *gin.Context) (errCode int, err *validation.Error){
+func AddCAARecordToZone(z *Zone, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
 	flag := c.Query("flag")
 	tag := c.Query("tag")
@@ -508,85 +426,29 @@ func AddCAARecordToZone(z *Zone, zoneName, rType string, c *gin.Context) (errCod
 	valid.Required(flag, "flag").Message("标志位不能为空")
 	valid.Required(tag, "tag").Message("属性标签不能为空")
 	valid.Required(value, "value").Message("属性标签的值不能为空")
+	recordIsExist := false
+	if !valid.HasErrors() {
+		_r := NewRecord()
+		_r.Type = "CAA"
+		_r.SubDomain = subDomain
+		_r.Flag = uint8(com.StrTo(flag).MustInt())
+		_r.Tag = tag
+		_r.Value = value
 
-	if ! valid.HasErrors(){
-		var (
-			_caa       CAARecord
-			_caaRecord []CAARecord
-		)
-
-		_caa.Flag = uint8(com.StrTo(flag).MustInt())
-		_caa.Tag = tag
-		_caa.Value = value
-
-		if _, ok := z.Records.CAA[subDomain];ok {
-			_index := len(z.Records.CAA[subDomain])
-			for _, i := range z.Records.CAA[subDomain] {
-				if i.Tag == _caa.Tag && i.Value == _caa.Value {
-					return ERROR_EXIST_RECORD, &validation.Error{
-						Message:GetCodeMsg(ERROR_EXIST_RECORD),
-						Key:subDomain,
-						Name:subDomain,
-						Value:i.Tag,
-					}
+		for _, _record := range z.Records {
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Flag == _record.Flag && _r.Tag == _record.Tag && _r.Value == _record.Value{
+				recordIsExist = true
+				return ERROR_EXIST_RECORD, &validation.Error{
+					Message: GetCodeMsg(ERROR_EXIST_RECORD),
+					Key:     subDomain,
+					Name:    subDomain,
+					Value:   _r.IP.String(),
 				}
 			}
-			_caa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_caa.Tag+"|"+_caa.Value+"|"+fmt.Sprintf("%d",_index))
-			z.Records.CAA[subDomain] = append(z.Records.CAA[subDomain], _caa)
-		} else {
-			if z.Records.CAA == nil {
-				z.Records.CAA = make(map[string][]CAARecord)
-			}
-			_caa.ID = GenerateRecordID(zoneName+"|"+rType+"|"+subDomain+"|"+_caa.Tag+"|"+_caa.Value+"|"+fmt.Sprintf("%d",0))
-			_caaRecord = append(_caaRecord, _caa)
-			z.Records.CAA[subDomain] = _caaRecord
 		}
-	} else {
-		for _, err := range valid.Errors {
-			return INVALID_PARAMS, err
-		}
-	}
-	return SUCCESS, nil
-}
 
-// AddSOARecordToZone add a record of type SOA
-func AddSOARecordToZone(z *Zone, zoneName, rType string,  ttl int, c *gin.Context) (errCode int, err *validation.Error){
-	ns := c.Query("ns")
-	mBox := c.DefaultQuery("mail", "master."+zoneName)
-	refresh := c.DefaultQuery("refresh","3600")
-	retry := c.DefaultQuery("retry","600")
-	expire := c.DefaultQuery("expire", "86400")
-	minTTL := c.DefaultQuery("minttl","3600")
-
-	valid := validation.Validation{}
-	valid.Required(ns, "ns").Message("NS服务器不能为空")
-
-	if ! valid.HasErrors(){
-		var (
-			_soa       SOARecord
-		)
-
-		ns = strings.TrimSpace(ns)
-		ns = strings.Trim(ns, ".")
-		ns = ns + "."
-
-		_soa.TTL = CheckTTL(uint32(ttl))
-		_soa.Ns = ns
-		_soa.MBox = mBox
-		_soa.Refresh = uint32(com.StrTo(refresh).MustInt())
-		_soa.Retry = uint32(com.StrTo(retry).MustInt())
-		_soa.Expire = uint32(com.StrTo(expire).MustInt())
-		_soa.MinTTL = uint32(com.StrTo(minTTL).MustInt())
-
-		if z.Records.SOA.Ns != "" {
-			return ERROR_EXIST_RECORD, &validation.Error{
-				Message:GetCodeMsg(ERROR_EXIST_RECORD),
-				Key:rType,
-				Name:rType,
-				Value:_soa.MBox,
-				}
-		} else {
-			z.Records.SOA = _soa
+		if !recordIsExist {
+			z.Records[_r.ID] = _r
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -638,28 +500,170 @@ func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
 	return
 }
 
-// A query type a record
-func (lkvs *LKVS) A(name string, z Zone, record Record) (answers, extras []dns.RR) {
+// A query of type A
+func (lkvs *LKVS) A(name string, z Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Name)
-	for _, a := range record.A[subDomain] {
-		if a.IP == nil {
+	for _, _r := range z.Records {
+		if _r.Type == "A" && _r.SubDomain == subDomain {
+			r := new(dns.A)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeA,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.A = _r.IP
+			answers = append(answers, r)
+		} else {
 			continue
 		}
-		r := new(dns.A)
-		r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeA,
-			Class: dns.ClassINET, Ttl: CheckTTL(a.TTL)}
-		r.A = a.IP
-		answers = append(answers, r)
 	}
 	return
 }
 
+// A query of type AAAA
+func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
+			r := new(dns.AAAA)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeAAAA,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.AAAA = _r.IP
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+// A query of type TXT
+func (lkvs *LKVS) TXT(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "TXT" && _r.SubDomain == subDomain {
+			r := new(dns.TXT)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeTXT,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Txt = append(r.Txt, _r.Text)
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+// A query of type CNAME
+func (lkvs *LKVS) CNAME(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+			r := new(dns.CNAME)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Target = _r.Host
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+// A query of type MX
+func (lkvs *LKVS) MX(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "MX" && _r.SubDomain == subDomain {
+			r := new(dns.MX)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeMX,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Mx = _r.Host
+			r.Preference = _r.Preference
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+// A query of type SRV
+func (lkvs *LKVS) SRV(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "SRV" && _r.SubDomain == subDomain {
+			r := new(dns.SRV)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSRV,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Target = _r.Target
+			r.Port = _r.Port
+			r.Priority = _r.Priority
+			r.Weight = _r.Weight
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+// A query of type CAA
+func (lkvs *LKVS) CAA(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Name)
+	for _, _r := range z.Records {
+		if _r.Type == "CAA" && _r.SubDomain == subDomain {
+			r := new(dns.CAA)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCAA,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Flag = _r.Flag
+			r.Tag = _r.Tag
+			r.Value = _r.Value
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
+	return
+}
+
+func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
+	r := new(dns.SOA)
+	if z.SOA.Ns == "" {
+		r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSOA,
+			Class: dns.ClassINET, Ttl: defaultTTL}
+		r.Ns = "ns1." + name
+		r.Mbox = "hostmaster." + name
+		r.Refresh = 86400
+		r.Retry = 7200
+		r.Expire = 3600
+		r.Minttl = defaultTTL
+	} else {
+		r.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeSOA,
+			Class: dns.ClassINET, Ttl: CheckTTL(z.SOA.TTL)}
+		r.Ns = z.SOA.Ns
+		r.Mbox = z.SOA.MBox
+		r.Refresh = z.SOA.Refresh
+		r.Retry = z.SOA.Retry
+		r.Expire = z.SOA.Expire
+		r.Minttl = z.SOA.MinTTL
+	}
+	r.Serial = lkvs.serial()
+	answers = append(answers, r)
+	return
+}
+
 func CheckTTL(ttl uint32) uint32 {
-	if ttl == 0 || ttl < defaultTTL{
+	if ttl == 0 || ttl < defaultTTL {
 		return defaultTTL
 	}
 
 	return ttl
+}
+
+func CheckHost(host string) string {
+	host = strings.TrimSpace(host)
+	host = strings.Trim(host, ".")
+	host = host + "."
+	return host
 }
 
 func DeleteSpace(str string) string {

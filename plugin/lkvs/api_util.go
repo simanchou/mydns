@@ -1,8 +1,9 @@
 package lkvs
 
 import (
-	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/satori/go.uuid"
 )
 
 const (
@@ -95,8 +96,7 @@ func (g *Gin) Response(httpCode, errCode int, data interface{}) {
 	})
 }
 
-func GenerateRecordID(str string) string {
-	b := []byte(str)
-	encode := base64.StdEncoding.EncodeToString(b)
-	return encode
+func GenerateRecordID() string {
+	u4 := uuid.Must(uuid.NewV4(),nil)
+	return fmt.Sprintf("%s",u4)
 }
