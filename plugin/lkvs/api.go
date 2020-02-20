@@ -40,6 +40,8 @@ func (lkvs *LKVS) InitRouter() {
 		api.POST("/domain", lkvs.apiAddZone)
 		api.PUT("/domain", lkvs.apiEditZone)
 		api.DELETE("/domain", lkvs.apiDeleteZone)
+
+		api.DELETE("/record",lkvs.apiDeleteRecord)
 	}
 
 	lkvs.APIEngine = engine
@@ -146,5 +148,73 @@ func (lkvs *LKVS) apiEditZone(c *gin.Context) {
 
 // delete zone
 func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
+	g := Gin{C: c}
+	zoneName := c.Query("domain")
 
+	valid := validation.Validation{}
+	valid.Required(zoneName, "domain").Message("域名不能为空")
+
+	if ! valid.HasErrors() {
+		zoneName = AddDotAtLast(zoneName)
+		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
+			if _z.Records == nil {
+				delete(lkvs.ZonesWithRecords, zoneName)
+			} else {
+				g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
+				return
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+			return
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+
+	err := lkvs.DeleteZoneInDB(zoneName)
+	if err != nil {
+		g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
+	}
+	g.Response(http.StatusOK, SUCCESS, nil)
+}
+
+// delete record
+func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
+	g := Gin{C: c}
+	zoneName := c.Query("domain")
+	id := c.Query("id")
+
+	valid := validation.Validation{}
+	valid.Required(zoneName, "domain").Message("域名不能为空")
+	valid.Required(id, "id").Message("记录ID不能为空")
+
+	var z *Zone
+	if ! valid.HasErrors() {
+		zoneName = AddDotAtLast(zoneName)
+		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
+			z = &_z
+			if _, ok := z.Records[id];ok{
+				delete(z.Records, id)
+			} else {
+				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
+				return
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+
+	err := lkvs.SaveToDB(z)
+	if err != nil {
+		g.Response(http.StatusInternalServerError, ERROR_DELETE_RECORD_FAIL, nil)
+	}
+	g.Response(http.StatusOK, SUCCESS, nil)
 }

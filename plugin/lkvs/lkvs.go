@@ -295,7 +295,7 @@ func AddCNAMERecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *v
 		_r.Type = "CNAME"
 		_r.SubDomain = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Host = CheckHost(host)
+		_r.Host = AddDotAtLast(host)
 
 		for _, _record := range z.Records {
 			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Host == _record.Host {
@@ -335,7 +335,7 @@ func AddMXRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *vali
 		_r.Type = "MX"
 		_r.SubDomain = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Host = CheckHost(host)
+		_r.Host = AddDotAtLast(host)
 		_r.Preference = uint16(com.StrTo(preference).MustInt())
 
 		if _r.Preference == 0 {
@@ -386,7 +386,7 @@ func AddSRVRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *val
 		_r.Type = "SRV"
 		_r.SubDomain = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Target = CheckHost(target)
+		_r.Target = AddDotAtLast(target)
 		_r.Priority = uint16(com.StrTo(priority).MustInt())
 		_r.Weight = uint16(com.StrTo(weight).MustInt())
 		_r.Port = uint16(com.StrTo(port).MustInt())
@@ -498,6 +498,19 @@ func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
 		return b.Put([]byte(z.Name), encode)
 	})
 	return
+}
+
+// DeleteZone delete zone in db
+func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
+	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketName))
+		err := b.Delete([]byte(zoneName))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 // A query of type A
@@ -659,11 +672,11 @@ func CheckTTL(ttl uint32) uint32 {
 	return ttl
 }
 
-func CheckHost(host string) string {
-	host = strings.TrimSpace(host)
-	host = strings.Trim(host, ".")
-	host = host + "."
-	return host
+func AddDotAtLast(str string) string {
+	str = strings.TrimSpace(str)
+	str = strings.Trim(str, ".")
+	str = str + "."
+	return str
 }
 
 func DeleteSpace(str string) string {
