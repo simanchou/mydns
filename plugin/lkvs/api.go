@@ -38,9 +38,9 @@ func (lkvs *LKVS) InitRouter() {
 	{
 		api.GET("/domain", lkvs.apiGetZones)
 		api.POST("/domain", lkvs.apiAddZone)
-		api.PUT("/domain", lkvs.apiEditZone)
 		api.DELETE("/domain", lkvs.apiDeleteZone)
 
+		api.POST("/record", lkvs.apiAddRecord)
 		api.DELETE("/record",lkvs.apiDeleteRecord)
 	}
 
@@ -56,77 +56,30 @@ func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 }
 
 // add zone
-func (lkvs *LKVS) apiAddZone(c *gin.Context) {
-	g := Gin{C: c}
+func (lkvs *LKVS)apiAddZone(c *gin.Context) {
+	g :=Gin{C:c}
 	zoneName := c.Query("domain")
-	rType := c.Query("type")
-	ttl := com.StrTo(c.DefaultQuery("ttl", "600")).MustInt()
 
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
-	valid.Required(rType, "type").Message("记录类型不能为空")
-
 	z := NewZone()
 	if ! valid.HasErrors() {
-		zoneName = strings.TrimSpace(zoneName)
-		zoneName = strings.Trim(zoneName, ".")
-		zoneName = zoneName + "."
-		z.SOA.MBox = fmt.Sprintf("admin.%s",zoneName)
-		z.SOA.Ns = "ns.mydns.local."
+		zoneName = AddDotAtLast(zoneName)
 
 		lkvs.LoadZones()
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
-			z = &_z
-		}
-		if z.Name == "" {
+		if _, ok := lkvs.ZonesWithRecords[zoneName];ok{
+			data := validation.Error{
+				Message: GetCodeMsg(ERROR_EXIST_ZONE),
+				Key:     zoneName,
+				Name:    zoneName,
+				Value:   zoneName}
+			g.Response(http.StatusOK, ERROR_EXIST_ZONE,data)
+			return
+		} else {
 			z.Name = zoneName
-		}
-		fmt.Println("rType: ", rType)
-		fmt.Printf("zone: %#v\n", z)
-		switch strings.ToUpper(rType) {
-		case "A":
-			code, err := AddARecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "AAAA":
-			code, err := AddAAAARecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "TXT":
-			code, err := AddTXTRecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "CNAME":
-			code, err := AddCNAMERecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "MX":
-			code, err := AddMXRecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "SRV":
-			code, err := AddSRVRecordToZone(z, ttl, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
-		case "CAA":
-			code, err := AddCAARecordToZone(z, c)
-			if err != nil {
-				g.Response(http.StatusOK, code, err)
-				return
-			}
+			z.SOA.MBox = fmt.Sprintf("admin.%s",zoneName)
+			z.SOA.Ns = "ns.mydns.local."
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -141,9 +94,91 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
-// edit zone
-func (lkvs *LKVS) apiEditZone(c *gin.Context) {
+// add record
+func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
+	g := Gin{C: c}
+	zoneName := c.Query("domain")
+	rType := c.Query("type")
+	ttl := com.StrTo(c.DefaultQuery("ttl", "600")).MustInt()
 
+	valid := validation.Validation{}
+	valid.Required(zoneName, "domain").Message("域名不能为空")
+	valid.Required(rType, "type").Message("记录类型不能为空")
+
+	if ! valid.HasErrors() {
+		zoneName = AddDotAtLast(zoneName)
+		lkvs.LoadZones()
+
+
+		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
+			var z *Zone
+			z = &_z
+			if z.Records == nil {
+				z.Records = make(map[string]*Record)
+			}
+			fmt.Println("rType: ", rType)
+			fmt.Printf("zone: %#v\n", z)
+			switch strings.ToUpper(rType) {
+			case "A":
+				code, err := AddARecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "AAAA":
+				code, err := AddAAAARecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "TXT":
+				code, err := AddTXTRecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "CNAME":
+				code, err := AddCNAMERecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "MX":
+				code, err := AddMXRecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "SRV":
+				code, err := AddSRVRecordToZone(z, ttl, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			case "CAA":
+				code, err := AddCAARecordToZone(z, c)
+				if err != nil {
+					g.Response(http.StatusOK, code, err)
+					return
+				}
+			}
+
+			err := lkvs.SaveToDB(z)
+			if err != nil {
+				g.Response(http.StatusInternalServerError, ERROR_ADD_ZONE_FAIL, nil)
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+			return
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+
+	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
 // delete zone
