@@ -488,6 +488,161 @@ func EditARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validati
 	return SUCCESS, nil
 }
 
+// EditAAAARecord edit a record of type AAAA
+func EditAAAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	host := DeleteSpace(c.Query("host"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if host == "" && ttl == "" {
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "host + ttl", "host + ttl", "host,ttl不能全为空")
+	}
+
+	if host != "" {
+		r.IP = net.ParseIP(host)
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
+// EditTXTRecord edit a record of type TXT
+func EditTXTRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	text := DeleteSpace(c.Query("text"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if text == "" && ttl == "" {
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "text + ttl", "text + ttl", "text,ttl不能全为空")
+	}
+
+	if text != "" {
+		r.Text = text
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
+// EditCNAMERecord edit a record of type CNAME
+func EditCNAMERecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	host := DeleteSpace(c.Query("host"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if host == "" && ttl == "" {
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "host + ttl", "host + ttl", "host,ttl不能全为空")
+	}
+
+	if host != "" {
+		r.Host = AddDotAtLast(host)
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
+// EditMXRecord edit a record of type MX
+func EditMXRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	host := DeleteSpace(c.Query("host"))
+	preference := DeleteSpace(c.Query("preference"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if host == "" && ttl == "" && preference == ""{
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "host + preference + ttl", "host + preference + ttl",
+				"host,preference,ttl不能全为空")
+	}
+
+	if host != "" {
+		r.Host = AddDotAtLast(host)
+	}
+	if preference != "" {
+		r.Preference = uint16(com.StrTo(preference).MustInt())
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
+// EditSRVRecord edit a record of type SRV
+func EditSRVRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	target := DeleteSpace(c.Query("target"))
+	port := DeleteSpace(c.Query("port"))
+	priority := DeleteSpace(c.Query("priority"))
+	weight := DeleteSpace(c.Query("weight"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if target == "" && port == "" && priority == ""&& weight == "" && ttl == ""{
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "target + port + priority + weight + ttl",
+				"target + port + priority + weight + ttl",
+				"target,port,priority,weight,ttl不能全为空")
+	}
+
+	if target != "" {
+		r.Target = AddDotAtLast(target)
+	}
+	if port != "" {
+		r.Port = uint16(com.StrTo(port).MustInt())
+	}
+	if priority != "" {
+		r.Priority = uint16(com.StrTo(priority).MustInt())
+	}
+	if weight != "" {
+		r.Weight = uint16(com.StrTo(weight).MustInt())
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
+// EditCAARecord edit a record of type CAA
+func EditCAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	flag := DeleteSpace(c.Query("flag"))
+	tag := DeleteSpace(c.Query("tag"))
+	value := DeleteSpace(c.Query("value"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if flag == "" && tag == "" && value == "" && ttl == ""{
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "flag + tag + value + ttl",
+				"flag + tag + value + ttl",
+				"flag,tag,value,ttl不能全为空")
+	}
+
+	if flag != "" {
+		r.Flag = uint8(com.StrTo(flag).MustInt())
+	}
+	if tag != "" {
+		r.Tag = tag
+	}
+	if value != "" {
+		r.Value = value
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
+	return SUCCESS, nil
+}
+
 func (lkvs *LKVS) serial() uint32 {
 	return uint32(time.Now().Unix())
 }

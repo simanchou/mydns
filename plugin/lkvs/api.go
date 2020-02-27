@@ -221,6 +221,9 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 					g.Response(http.StatusOK, code, err)
 					return
 				}
+			default:
+				g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
+				return
 			}
 
 			err := lkvs.SaveToDB(z)
@@ -270,45 +273,51 @@ func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 						g.Response(http.StatusOK, code, err)
 						return
 					}
-					/*
+
 				case "AAAA":
-					code, err := AddAAAARecordToZone(z, ttl, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				case "TXT":
-					code, err := AddTXTRecordToZone(z, ttl, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				case "CNAME":
-					code, err := AddCNAMERecordToZone(z, ttl, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				case "MX":
-					code, err := AddMXRecordToZone(z, ttl, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				case "SRV":
-					code, err := AddSRVRecordToZone(z, ttl, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				case "CAA":
-					code, err := AddCAARecordToZone(z, c)
+					code, err := EditAAAARecord(z, r, c)
 					if err != nil {
 						g.Response(http.StatusOK, code, err)
 						return
 					}
 
-					 */
+				case "TXT":
+					code, err := EditTXTRecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+
+				case "CNAME":
+					code, err := EditCNAMERecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+
+				case "MX":
+					code, err := EditMXRecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+
+				case "SRV":
+					code, err := EditSRVRecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+
+				case "CAA":
+					code, err := EditCAARecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				default:
+					g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
+					return
 				}
 			} else {
 				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)

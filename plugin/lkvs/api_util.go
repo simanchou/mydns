@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	SUCCESS        = 200
-	ERROR          = 500
-	INVALID_PARAMS = 400
+	SUCCESS             = 200
+	ERROR               = 500
+	INVALID_RECORD_TYPE = 300
+	INVALID_PARAMS      = 400
 
 	ERROR_EXIST_ZONE                              = 10001
 	ERROR_EXIST_ZONE_FAIL                         = 10002
@@ -43,6 +44,7 @@ const (
 var CodeMsgFlags = map[int]string{
 	SUCCESS:                "ok",
 	ERROR:                  "fail",
+	INVALID_RECORD_TYPE:    "错误的记录类型",
 	INVALID_PARAMS:         "请求参数错误",
 	ERROR_EXIST_ZONE:       "已存在该域名",
 	ERROR_EXIST_ZONE_FAIL:  "获取已存在域名失败",
