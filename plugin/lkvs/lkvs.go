@@ -168,6 +168,15 @@ func NewRecord() *Record {
 	}
 }
 
+func NewValidationError(errCode int, key, name, value string) *validation.Error {
+	return &validation.Error{
+		Message: GetCodeMsg(errCode),
+		Key:     key,
+		Name:    name,
+		Value:   value,
+	}
+}
+
 // AddARecordToZone add a record of type A
 func AddARecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
 	subDomain := c.Query("sub")
@@ -436,7 +445,7 @@ func AddCAARecordToZone(z *Zone, c *gin.Context) (errCode int, err *validation.E
 		_r.Value = value
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Flag == _record.Flag && _r.Tag == _record.Tag && _r.Value == _record.Value{
+			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Flag == _record.Flag && _r.Tag == _record.Tag && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
@@ -455,6 +464,27 @@ func AddCAARecordToZone(z *Zone, c *gin.Context) (errCode int, err *validation.E
 			return INVALID_PARAMS, err
 		}
 	}
+	return SUCCESS, nil
+}
+
+// EditARecord edit a record of type A
+func EditARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
+	host := DeleteSpace(c.Query("host"))
+	ttl := DeleteSpace(c.Query("ttl"))
+
+	if host == "" && ttl == "" {
+		return INVALID_PARAMS,
+			NewValidationError(INVALID_PARAMS, "host + ttl", "host + ttl", "host,ttl不能全为空")
+	}
+
+	if host != "" {
+		r.IP = net.ParseIP(host)
+	}
+	if ttl != "" {
+		r.TTL = uint32(com.StrTo(ttl).MustInt())
+	}
+	z.Records[r.ID] = r
+
 	return SUCCESS, nil
 }
 

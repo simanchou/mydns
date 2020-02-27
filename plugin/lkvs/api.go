@@ -40,7 +40,9 @@ func (lkvs *LKVS) InitRouter() {
 		api.POST("/domain", lkvs.apiAddZone)
 		api.DELETE("/domain", lkvs.apiDeleteZone)
 
+		api.GET("/record", lkvs.apiGetRecords)
 		api.POST("/record", lkvs.apiAddRecord)
+		api.PUT("/record", lkvs.apiEditRecord)
 		api.DELETE("/record",lkvs.apiDeleteRecord)
 	}
 
@@ -94,6 +96,65 @@ func (lkvs *LKVS)apiAddZone(c *gin.Context) {
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
+// delete zone
+func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
+	g := Gin{C: c}
+	zoneName := c.Query("domain")
+
+	valid := validation.Validation{}
+	valid.Required(zoneName, "domain").Message("域名不能为空")
+
+	if ! valid.HasErrors() {
+		zoneName = AddDotAtLast(zoneName)
+		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
+			if _z.Records == nil {
+				delete(lkvs.ZonesWithRecords, zoneName)
+			} else {
+				g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
+				return
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+			return
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+
+	err := lkvs.DeleteZoneInDB(zoneName)
+	if err != nil {
+		g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
+	}
+	g.Response(http.StatusOK, SUCCESS, nil)
+}
+
+// get all records of zone
+func (lkvs *LKVS) apiGetRecords(c *gin.Context) {
+	g := Gin{C: c}
+
+	zoneName := AddDotAtLast(c.Query("domain"))
+	valid := validation.Validation{}
+	valid.Required(zoneName, "domain").Message("域名不能为空")
+	if ! valid.HasErrors() {
+		lkvs.LoadZones()
+
+		if data, ok := lkvs.ZonesWithRecords[zoneName];ok{
+			g.Response(http.StatusOK, SUCCESS, data)
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+			return
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+}
+
 // add record
 func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 	g := Gin{C: c}
@@ -108,7 +169,6 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 	if ! valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
 		lkvs.LoadZones()
-
 
 		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
 			var z *Zone
@@ -181,21 +241,83 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
-// delete zone
-func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
+// edit record
+func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 	g := Gin{C: c}
 	zoneName := c.Query("domain")
+	id := c.Query("id")
 
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
+	valid.Required(id, "id").Message("记录ID不能为空")
 
 	if ! valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
-		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
-			if _z.Records == nil {
-				delete(lkvs.ZonesWithRecords, zoneName)
+		lkvs.LoadZones()
+
+		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
+			var z *Zone
+			z = &_z
+
+			fmt.Println("id: ", id)
+			fmt.Printf("zone: %#v\n", z)
+
+			if r,ok := z.Records[id];ok{
+				switch r.Type {
+				case "A":
+					code, err := EditARecord(z, r, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+					/*
+				case "AAAA":
+					code, err := AddAAAARecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "TXT":
+					code, err := AddTXTRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "CNAME":
+					code, err := AddCNAMERecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "MX":
+					code, err := AddMXRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "SRV":
+					code, err := AddSRVRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "CAA":
+					code, err := AddCAARecordToZone(z, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+
+					 */
+				}
 			} else {
-				g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
+				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
+				return
+			}
+
+			err := lkvs.SaveToDB(z)
+			if err != nil {
+				g.Response(http.StatusInternalServerError, ERROR_EDIT_RECORD_FAIL, nil)
 				return
 			}
 		} else {
@@ -209,10 +331,6 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 		}
 	}
 
-	err := lkvs.DeleteZoneInDB(zoneName)
-	if err != nil {
-		g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
-	}
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
