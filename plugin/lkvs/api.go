@@ -34,6 +34,7 @@ func (lkvs *LKVS) InitRouter() {
 	engine.Use(gin.Recovery())
 
 	gin.SetMode("debug")
+	engine.POST("/register", lkvs.register)
 	api := engine.Group("/api")
 	{
 		api.GET("/domain", lkvs.apiGetZones)
@@ -43,10 +44,41 @@ func (lkvs *LKVS) InitRouter() {
 		api.GET("/record", lkvs.apiGetRecords)
 		api.POST("/record", lkvs.apiAddRecord)
 		api.PUT("/record", lkvs.apiEditRecord)
-		api.DELETE("/record",lkvs.apiDeleteRecord)
+		api.DELETE("/record", lkvs.apiDeleteRecord)
 	}
 
 	lkvs.APIEngine = engine
+}
+
+// register
+func (lkvs *LKVS) register(c *gin.Context) {
+	g := Gin{C:c}
+	username := DeleteSpace(c.Query("username"))
+	password := DeleteSpace(c.Query("password"))
+
+	valid := validation.Validation{}
+	u := User{Username: username, Password: password}
+	ok, _ := valid.Valid(&u)
+
+	if ok {
+		isExist := lkvs.UserIsExist(u.Username)
+		if ! isExist {
+			err := lkvs.Save(BucketNameForUser, u)
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_ADD_USER_FAIL, nil)
+				return
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_EXIST_USER, nil)
+			return
+		}
+	} else {
+		for _, err := range valid.Errors {
+			g.Response(http.StatusOK, INVALID_PARAMS, err)
+			return
+		}
+	}
+	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
 // get all zones
@@ -58,29 +90,29 @@ func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 }
 
 // add zone
-func (lkvs *LKVS)apiAddZone(c *gin.Context) {
-	g :=Gin{C:c}
+func (lkvs *LKVS) apiAddZone(c *gin.Context) {
+	g := Gin{C: c}
 	zoneName := c.Query("domain")
 
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 	z := NewZone()
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
 
 		lkvs.LoadZones()
 
-		if _, ok := lkvs.ZonesWithRecords[zoneName];ok{
+		if _, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			data := validation.Error{
 				Message: GetCodeMsg(ERROR_EXIST_ZONE),
 				Key:     zoneName,
 				Name:    zoneName,
 				Value:   zoneName}
-			g.Response(http.StatusOK, ERROR_EXIST_ZONE,data)
+			g.Response(http.StatusOK, ERROR_EXIST_ZONE, data)
 			return
 		} else {
 			z.Name = zoneName
-			z.SOA.MBox = fmt.Sprintf("admin.%s",zoneName)
+			z.SOA.MBox = fmt.Sprintf("admin.%s", zoneName)
 			z.SOA.Ns = "ns.mydns.local."
 		}
 	} else {
@@ -89,9 +121,10 @@ func (lkvs *LKVS)apiAddZone(c *gin.Context) {
 			return
 		}
 	}
-	err := lkvs.SaveToDB(z)
+	err := lkvs.Save(BucketNameForDomain, z)
 	if err != nil {
 		g.Response(http.StatusInternalServerError, ERROR_ADD_ZONE_FAIL, nil)
+		return
 	}
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
@@ -104,9 +137,9 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
-		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
+		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			if _z.Records == nil {
 				delete(lkvs.ZonesWithRecords, zoneName)
 			} else {
@@ -138,10 +171,10 @@ func (lkvs *LKVS) apiGetRecords(c *gin.Context) {
 	zoneName := AddDotAtLast(c.Query("domain"))
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		lkvs.LoadZones()
 
-		if data, ok := lkvs.ZonesWithRecords[zoneName];ok{
+		if data, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			g.Response(http.StatusOK, SUCCESS, data)
 		} else {
 			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
@@ -166,11 +199,11 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 	valid.Required(rType, "type").Message("记录类型不能为空")
 
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
 		lkvs.LoadZones()
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
+		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			var z *Zone
 			z = &_z
 			if z.Records == nil {
@@ -226,9 +259,10 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 				return
 			}
 
-			err := lkvs.SaveToDB(z)
+			err := lkvs.Save(BucketNameForDomain, z)
 			if err != nil {
 				g.Response(http.StatusInternalServerError, ERROR_ADD_ZONE_FAIL, nil)
+				return
 			}
 		} else {
 			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
@@ -254,18 +288,18 @@ func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 	valid.Required(id, "id").Message("记录ID不能为空")
 
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
 		lkvs.LoadZones()
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName];ok {
+		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			var z *Zone
 			z = &_z
 
 			fmt.Println("id: ", id)
 			fmt.Printf("zone: %#v\n", z)
 
-			if r,ok := z.Records[id];ok{
+			if r, ok := z.Records[id]; ok {
 				switch r.Type {
 				case "A":
 					code, err := EditARecord(z, r, c)
@@ -324,7 +358,7 @@ func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 				return
 			}
 
-			err := lkvs.SaveToDB(z)
+			err := lkvs.Save(BucketNameForDomain, z)
 			if err != nil {
 				g.Response(http.StatusInternalServerError, ERROR_EDIT_RECORD_FAIL, nil)
 				return
@@ -354,11 +388,11 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 	valid.Required(id, "id").Message("记录ID不能为空")
 
 	var z *Zone
-	if ! valid.HasErrors() {
+	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
-		if _z,ok := lkvs.ZonesWithRecords[zoneName];ok{
+		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			z = &_z
-			if _, ok := z.Records[id];ok{
+			if _, ok := z.Records[id]; ok {
 				delete(z.Records, id)
 			} else {
 				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
@@ -374,7 +408,7 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 		}
 	}
 
-	err := lkvs.SaveToDB(z)
+	err := lkvs.Save(BucketNameForDomain, z)
 	if err != nil {
 		g.Response(http.StatusInternalServerError, ERROR_DELETE_RECORD_FAIL, nil)
 	}

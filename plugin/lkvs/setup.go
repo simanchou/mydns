@@ -31,16 +31,27 @@ func init() {
 		log.Fatalln("open db fail")
 	}
 
-	// init db
+	// init db for domain
 	err = RLKVS.DB.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(BucketName))
+		_, err := tx.CreateBucketIfNotExists([]byte(BucketNameForDomain))
 		if err != nil {
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("init db fail, error: %s", err)
+		log.Fatalf("init db for domain fail, error: %s", err)
+	}
+	// init db for user
+	err = RLKVS.DB.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(BucketNameForUser))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatalf("init db for user fail, error: %s", err)
 	}
 
 	RLKVS.TTL = 600

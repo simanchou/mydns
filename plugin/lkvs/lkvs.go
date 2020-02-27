@@ -2,6 +2,7 @@ package lkvs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
@@ -17,9 +18,10 @@ import (
 )
 
 const (
-	// BucketName bucket name
-	BucketName = "domain"
-	defaultTTL = 600
+	// BucketNameForDomain bucket name
+	BucketNameForDomain = "domain"
+	BucketNameForUser = "user"
+	defaultTTL          = 600
 )
 
 // LKVS local key-value storage
@@ -34,6 +36,12 @@ type LKVS struct {
 	ZonesName        []string
 	ZonesWithRecords map[string]Zone
 	LastZoneUpdate   time.Time
+}
+
+// User user struct
+type User struct {
+	Username string `valid:"Required; MaxSize(50)"`
+	Password string `valid:"Required; MaxSize(50)"`
 }
 
 // Zone domain zone with records
@@ -650,7 +658,7 @@ func (lkvs *LKVS) serial() uint32 {
 // LoadZones load all zones from db
 func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BucketName))
+		b := tx.Bucket([]byte(BucketNameForDomain))
 		c := b.Cursor()
 		var _zoneName []string
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -671,10 +679,11 @@ func (lkvs *LKVS) LoadZones() {
 	}
 }
 
+/*
 // SaveToDB save to db
 func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
 	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BucketName))
+		b := tx.Bucket([]byte(BucketNameForDomain))
 		encode, err := json.Marshal(z)
 		if err != nil {
 			log.Println("encode fail, error: ", err)
@@ -685,10 +694,34 @@ func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
 	return
 }
 
+ */
+
+// Save save to db
+func (lkvs *LKVS) Save(bn string, data interface{}) (err error) {
+	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bn))
+		encode, err := json.Marshal(data)
+		if err != nil {
+			log.Println("encode fail, error: ", err)
+			return err
+		}
+		switch data.(type) {
+		case *Zone:
+			z, _ := data.(*Zone)
+			return b.Put([]byte(z.Name), encode)
+		case User:
+			u, _ := data.(User)
+			return b.Put([]byte(u.Username), encode)
+		}
+		return errors.New("unsupported storage type in db")
+	})
+	return
+}
+
 // DeleteZone delete zone in db
 func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BucketName))
+		b := tx.Bucket([]byte(BucketNameForDomain))
 		err := b.Delete([]byte(zoneName))
 		if err != nil {
 			return err
@@ -847,6 +880,40 @@ func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
 	r.Serial = lkvs.serial()
 	answers = append(answers, r)
 	return
+}
+
+func (lkvs *LKVS) UserIsExist(username string) bool {
+	ok := true
+	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForUser))
+		v := b.Get([]byte(username))
+		if v == nil {
+			ok = false
+		}
+		return nil
+	})
+	return ok
+}
+
+func (lkvs *LKVS)CheckAuth(username, password string) bool {
+	err := lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForUser))
+		v := b.Get([]byte(username))
+
+		var u User
+		err := json.Unmarshal(v, &u)
+		if err != nil {
+			return err
+		}
+		if password == u.Password {
+			return nil
+		}
+		return errors.New("wrong password")
+	})
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func CheckTTL(ttl uint32) uint32 {

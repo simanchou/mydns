@@ -2,8 +2,11 @@ package lkvs
 
 import (
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
+	"net/http"
+	"time"
 )
 
 const (
@@ -34,10 +37,14 @@ const (
 	ERROR_GET_RECORDS_FAIL   = 10028
 	ERROR_GET_RECORD_FAIL    = 10029
 
-	ERROR_AUTH_CHECK_TOKEN_FAIL    = 20001
-	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 20002
-	ERROR_AUTH_TOKEN               = 20003
-	ERROR_AUTH                     = 20004
+	ERROR_ADD_USER_FAIL = 20001
+	ERROR_EXIST_USER     = 20002
+	ERROR_NOT_EXIST_USER = 20003
+
+	ERROR_AUTH_CHECK_TOKEN_FAIL    = 30001
+	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 30002
+	ERROR_AUTH_TOKEN               = 30003
+	ERROR_AUTH                     = 30004
 )
 
 // MsgFlags flags of msg
@@ -66,6 +73,9 @@ var CodeMsgFlags = map[int]string{
 	ERROR_COUNT_RECORD_FAIL:                       "统计记录失败",
 	ERROR_GET_RECORDS_FAIL:                        "获取多个记录失败",
 	ERROR_GET_RECORD_FAIL:                         "获取单个记录失败",
+	ERROR_ADD_USER_FAIL:"注册用户失败",
+	ERROR_EXIST_USER:                              "用户已存在",
+	ERROR_NOT_EXIST_USER:                          "用户不存在",
 	ERROR_AUTH_CHECK_TOKEN_FAIL:                   "Token鉴权失败",
 	ERROR_AUTH_CHECK_TOKEN_TIMEOUT:                "Token已超时",
 	ERROR_AUTH_TOKEN:                              "Token生成失败",
@@ -103,4 +113,81 @@ func (g *Gin) Response(httpCode, errCode int, data interface{}) {
 func GenerateRecordID() string {
 	u4 := uuid.Must(uuid.NewV4(), nil)
 	return fmt.Sprintf("%s", u4)
+}
+
+// jwt util
+var jwtSecret = []byte("thisissecret")
+
+// Claims claims
+type Claims struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	jwt.StandardClaims
+}
+
+// GenerateToken generate token
+func GenerateToke(username, password string) (string, error) {
+	nowTime := time.Now()
+	expireTime := nowTime.Add(3 * time.Hour)
+
+	claims := Claims{
+		Username: username,
+		Password: password,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expireTime.Unix(),
+			Issuer:    "mydns",
+		},
+	}
+
+	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token, err := tokenClaims.SignedString(jwtSecret)
+
+	return token, err
+}
+
+// ParseToken parse token
+func ParseToken(token string) (*Claims, error) {
+	tokenClaims, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+
+	if tokenClaims != nil {
+		if claims, ok := tokenClaims.Claims.(*Claims); ok && tokenClaims.Valid {
+			return claims, nil
+		}
+	}
+
+	return nil, err
+}
+
+// JWT jwt middleware for gin
+func JWT() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var code int
+		var data interface{}
+
+		code = SUCCESS
+		token := c.Query("token")
+		if token == "" {
+			code = INVALID_PARAMS
+		} else {
+			claims, err := ParseToken(token)
+			if err != nil {
+				code = ERROR_AUTH_CHECK_TOKEN_FAIL
+			} else if time.Now().Unix() > claims.ExpiresAt {
+				code = ERROR_AUTH_CHECK_TOKEN_TIMEOUT
+			}
+		}
+
+		if code != SUCCESS {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": code,
+				"msg":  GetCodeMsg(code),
+				"data": data,
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }
