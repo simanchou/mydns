@@ -61,7 +61,7 @@ func doReverterTests(rules []Rule, t *testing.T) {
 		rw.ServeDNS(ctx, rec, m)
 		resp := rec.Msg
 		if resp.Question[0].Name != tc.to {
-			t.Errorf("Test %d: Expected Name to be %q but was %q", i, tc.to, resp.Question[0].Name)
+			t.Errorf("Test %d: Expected Zone to be %q but was %q", i, tc.to, resp.Question[0].Name)
 		}
 		if resp.Question[0].Qtype != tc.toType {
 			t.Errorf("Test %d: Expected Type to be '%d' but was '%d'", i, tc.toType, resp.Question[0].Qtype)

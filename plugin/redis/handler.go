@@ -53,7 +53,7 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 
 	record := redis.get(location, z)
 
-	fmt.Printf("[Name]: %s [Type]: %s\n", qname, qtype)
+	fmt.Printf("[Zone]: %s [Type]: %s\n", qname, qtype)
 	fmt.Printf("\t %+v\n", record)
 
 	switch qtype {
@@ -120,7 +120,7 @@ func (redis *Redis) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (redis *Redis) Name() string { return "redis" }
 
 func (redis *Redis) errorResponse(state request.Request, zone string, rcode int, err error) (int, error) {
@@ -128,7 +128,7 @@ func (redis *Redis) errorResponse(state request.Request, zone string, rcode int,
 	m.SetRcode(state.Req, rcode)
 	m.Authoritative, m.RecursionAvailable, m.Compress = true, false, true
 
-	// m.Ns, _ = redis.SOA(state.Name(), zone, nil)
+	// m.Ns, _ = redis.SOA(state.Zone(), zone, nil)
 
 	state.SizeAndDo(m)
 	state.W.WriteMsg(m)

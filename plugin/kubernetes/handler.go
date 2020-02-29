@@ -87,5 +87,5 @@ func (k Kubernetes) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.M
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (k Kubernetes) Name() string { return "kubernetes" }

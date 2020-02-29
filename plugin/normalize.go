@@ -39,7 +39,7 @@ func (z Zones) Normalize() {
 	}
 }
 
-// Name represents a domain name.
+// Zone represents a domain name.
 type Name string
 
 // Matches checks to see if other is a subdomain (or the same domain) of n.

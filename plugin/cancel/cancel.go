@@ -62,5 +62,5 @@ func (c Cancel) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	return code, err
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (c Cancel) Name() string { return "cancel" }

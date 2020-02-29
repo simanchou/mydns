@@ -1,6 +1,7 @@
 package lkvs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/caddyserver/caddy"
@@ -44,11 +45,15 @@ func init() {
 	}
 	// init db for user
 	err = RLKVS.DB.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(BucketNameForUser))
+		b, err := tx.CreateBucketIfNotExists([]byte(BucketNameForUser))
 		if err != nil {
 			return err
 		}
-		return nil
+
+		u := User{Username: "admin", Password: EncryptionPassword("123456")}
+		encode, _ := json.Marshal(u)
+		err = b.Put([]byte(u.Username), encode)
+		return err
 	})
 	if err != nil {
 		log.Fatalf("init db for user fail, error: %s", err)

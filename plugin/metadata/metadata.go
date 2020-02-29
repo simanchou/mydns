@@ -17,7 +17,7 @@ type Metadata struct {
 	Next      plugin.Handler
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (m *Metadata) Name() string { return "metadata" }
 
 // ContextWithMetadata is exported for use by provider tests

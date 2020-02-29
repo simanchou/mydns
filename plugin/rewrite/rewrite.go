@@ -69,7 +69,7 @@ func (rw Rewrite) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	return plugin.NextOrFailure(rw.Name(), rw.Next, ctx, wr, r)
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (rw Rewrite) Name() string { return "rewrite" }
 
 // Rule describes a rewrite rule.

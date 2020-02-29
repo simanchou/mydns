@@ -82,7 +82,7 @@ func (h Hosts) otherRecordsExist(qname string) bool {
 	return false
 }
 
-// Name implements the plugin.Handle interface.
+// Zone implements the plugin.Handle interface.
 func (h Hosts) Name() string { return "hosts" }
 
 // a takes a slice of net.IPs and returns a slice of A RRs.

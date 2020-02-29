@@ -177,5 +177,5 @@ func (x xfr) allowed(state request.Request) bool {
 	return false
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (Transfer) Name() string { return "transfer" }

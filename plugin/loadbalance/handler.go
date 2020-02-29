@@ -20,5 +20,5 @@ func (rr RoundRobin) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.
 	return plugin.NextOrFailure(rr.Name(), rr.Next, ctx, wrr, r)
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (rr RoundRobin) Name() string { return "loadbalance" }

@@ -57,7 +57,7 @@ func (f *Forward) SetProxy(p *Proxy) {
 // Len returns the number of configured proxies.
 func (f *Forward) Len() int { return len(f.proxies) }
 
-// Name implements plugin.Handler.
+// Zone implements plugin.Handler.
 func (f *Forward) Name() string { return "forward" }
 
 // ServeDNS implements plugin.Handler.

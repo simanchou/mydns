@@ -35,7 +35,9 @@ func (lkvs *LKVS) InitRouter() {
 
 	gin.SetMode("debug")
 	engine.POST("/register", lkvs.register)
+	engine.GET("/auth", lkvs.GetAuth)
 	api := engine.Group("/api")
+	api.Use(JWT())
 	{
 		api.GET("/domain", lkvs.apiGetZones)
 		api.POST("/domain", lkvs.apiAddZone)
@@ -57,7 +59,7 @@ func (lkvs *LKVS) register(c *gin.Context) {
 	password := DeleteSpace(c.Query("password"))
 
 	valid := validation.Validation{}
-	u := User{Username: username, Password: password}
+	u := User{Username: username, Password: EncryptionPassword(password)}
 	ok, _ := valid.Valid(&u)
 
 	if ok {
@@ -81,11 +83,64 @@ func (lkvs *LKVS) register(c *gin.Context) {
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
+//GetAuth
+func (lkvs *LKVS) GetAuth(c *gin.Context) {
+	g := Gin{C:c}
+	username := DeleteSpace(c.Query("username"))
+	password := DeleteSpace(c.Query("password"))
+
+	valid := validation.Validation{}
+	u := User{Username: username, Password: EncryptionPassword(password)}
+	ok, _ := valid.Valid(&u)
+
+	data := make(map[string]interface{})
+	code := INVALID_PARAMS
+
+	if ok {
+		isExist := lkvs.UserIsExist(u.Username)
+		if isExist {
+			isAuth := lkvs.CheckAuth(&u)
+			if isAuth {
+				token, err := GenerateToke(&u)
+				if err != nil {
+					code = ERROR_AUTH_TOKEN
+				} else {
+					data["token"] = token
+					code = SUCCESS
+				}
+			} else {
+				code = ERROR_AUTH
+			}
+		} else {
+			code = ERROR_NOT_EXIST_USER
+		}
+	}
+
+	g.Response(http.StatusOK, code, data)
+}
+
 // get all zones
 func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 	g := Gin{C: c}
 	lkvs.LoadZones()
-	data := lkvs.ZonesWithRecords
+
+	user, err := GetUserFromToken(c)
+	if err != nil {
+		g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+		return
+	}
+
+	data := make(map[string]Zone)
+	if user == "admin" {
+		data = lkvs.ZonesWithRecords
+	} else {
+		for k, v := range lkvs.ZonesWithRecords {
+			if v.User == user {
+				data[k] = v
+			}
+		}
+	}
+
 	g.Response(http.StatusOK, SUCCESS, data)
 }
 
@@ -99,6 +154,11 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 	z := NewZone()
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+			return
+		}
 
 		lkvs.LoadZones()
 
@@ -111,7 +171,8 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 			g.Response(http.StatusOK, ERROR_EXIST_ZONE, data)
 			return
 		} else {
-			z.Name = zoneName
+			z.Zone = zoneName
+			z.User = user
 			z.SOA.MBox = fmt.Sprintf("admin.%s", zoneName)
 			z.SOA.Ns = "ns.mydns.local."
 		}
@@ -139,11 +200,24 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+			return
+		}
+		// 判断是否存在该域名
 		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
-			if _z.Records == nil {
-				delete(lkvs.ZonesWithRecords, zoneName)
+			// 判断域名是否属于该用户
+			if _z.User == user || user == "admin" {
+				// 判断域名的记录列表是否为空，不为空的话则不允许删除域名
+				if _z.Records == nil {
+					delete(lkvs.ZonesWithRecords, zoneName)
+				} else {
+					g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
+					return
+				}
 			} else {
-				g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
+				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 				return
 			}
 		} else {
@@ -160,6 +234,7 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 	err := lkvs.DeleteZoneInDB(zoneName)
 	if err != nil {
 		g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
+		return
 	}
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
@@ -174,8 +249,19 @@ func (lkvs *LKVS) apiGetRecords(c *gin.Context) {
 	if !valid.HasErrors() {
 		lkvs.LoadZones()
 
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+			return
+		}
+
 		if data, ok := lkvs.ZonesWithRecords[zoneName]; ok {
-			g.Response(http.StatusOK, SUCCESS, data)
+			if data.User == user || user == "admin" {
+				g.Response(http.StatusOK, SUCCESS, data)
+			} else {
+				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+				return
+			}
 		} else {
 			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
 			return
@@ -203,65 +289,74 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 		zoneName = AddDotAtLast(zoneName)
 		lkvs.LoadZones()
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
-			var z *Zone
-			z = &_z
-			if z.Records == nil {
-				z.Records = make(map[string]*Record)
-			}
-			fmt.Println("rType: ", rType)
-			fmt.Printf("zone: %#v\n", z)
-			switch strings.ToUpper(rType) {
-			case "A":
-				code, err := AddARecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "AAAA":
-				code, err := AddAAAARecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "TXT":
-				code, err := AddTXTRecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "CNAME":
-				code, err := AddCNAMERecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "MX":
-				code, err := AddMXRecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "SRV":
-				code, err := AddSRVRecordToZone(z, ttl, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			case "CAA":
-				code, err := AddCAARecordToZone(z, c)
-				if err != nil {
-					g.Response(http.StatusOK, code, err)
-					return
-				}
-			default:
-				g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
-				return
-			}
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+			return
+		}
 
-			err := lkvs.Save(BucketNameForDomain, z)
-			if err != nil {
-				g.Response(http.StatusInternalServerError, ERROR_ADD_ZONE_FAIL, nil)
+		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+			if _z.User == user || user == "admin" {
+				var z *Zone
+				z = &_z
+				if z.Records == nil {
+					z.Records = make(map[string]*Record)
+				}
+				switch strings.ToUpper(rType) {
+				case "A":
+					code, err := AddARecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "AAAA":
+					code, err := AddAAAARecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "TXT":
+					code, err := AddTXTRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "CNAME":
+					code, err := AddCNAMERecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "MX":
+					code, err := AddMXRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "SRV":
+					code, err := AddSRVRecordToZone(z, ttl, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				case "CAA":
+					code, err := AddCAARecordToZone(z, c)
+					if err != nil {
+						g.Response(http.StatusOK, code, err)
+						return
+					}
+				default:
+					g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
+					return
+				}
+
+				err := lkvs.Save(BucketNameForDomain, z)
+				if err != nil {
+					g.Response(http.StatusInternalServerError, ERROR_ADD_ZONE_FAIL, nil)
+					return
+				}
+			} else {
+				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 				return
 			}
 		} else {
@@ -292,75 +387,82 @@ func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 		zoneName = AddDotAtLast(zoneName)
 		lkvs.LoadZones()
 
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+			return
+		}
+
 		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
-			var z *Zone
-			z = &_z
+			if _z.User == user || user == "admin" {
+				var z *Zone
+				z = &_z
+				if r, ok := z.Records[id]; ok {
+					switch r.Type {
+					case "A":
+						code, err := EditARecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
 
-			fmt.Println("id: ", id)
-			fmt.Printf("zone: %#v\n", z)
+					case "AAAA":
+						code, err := EditAAAARecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
 
-			if r, ok := z.Records[id]; ok {
-				switch r.Type {
-				case "A":
-					code, err := EditARecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
+					case "TXT":
+						code, err := EditTXTRecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
+
+					case "CNAME":
+						code, err := EditCNAMERecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
+
+					case "MX":
+						code, err := EditMXRecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
+
+					case "SRV":
+						code, err := EditSRVRecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
+
+					case "CAA":
+						code, err := EditCAARecord(z, r, c)
+						if err != nil {
+							g.Response(http.StatusOK, code, err)
+							return
+						}
+					default:
+						g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
 						return
 					}
+				} else {
+					g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
+					return
+				}
 
-				case "AAAA":
-					code, err := EditAAAARecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-
-				case "TXT":
-					code, err := EditTXTRecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-
-				case "CNAME":
-					code, err := EditCNAMERecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-
-				case "MX":
-					code, err := EditMXRecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-
-				case "SRV":
-					code, err := EditSRVRecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-
-				case "CAA":
-					code, err := EditCAARecord(z, r, c)
-					if err != nil {
-						g.Response(http.StatusOK, code, err)
-						return
-					}
-				default:
-					g.Response(http.StatusOK, INVALID_RECORD_TYPE, nil)
+				err := lkvs.Save(BucketNameForDomain, z)
+				if err != nil {
+					g.Response(http.StatusInternalServerError, ERROR_EDIT_RECORD_FAIL, nil)
 					return
 				}
 			} else {
-				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
-				return
-			}
-
-			err := lkvs.Save(BucketNameForDomain, z)
-			if err != nil {
-				g.Response(http.StatusInternalServerError, ERROR_EDIT_RECORD_FAIL, nil)
+				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 				return
 			}
 		} else {
@@ -390,16 +492,29 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 	var z *Zone
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
+
+		user, err := GetUserFromToken(c)
+		if err != nil {
+			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+			return
+		}
+
 		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
-			z = &_z
-			if _, ok := z.Records[id]; ok {
-				delete(z.Records, id)
+			if _z.User == user || user == "admin" {
+				z = &_z
+				if _, ok := z.Records[id]; ok {
+					delete(z.Records, id)
+				} else {
+					g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
+					return
+				}
 			} else {
-				g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
+				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 				return
 			}
 		} else {
 			g.Response(http.StatusOK, ERROR_NOT_EXIST_ZONE, nil)
+			return
 		}
 	} else {
 		for _, err := range valid.Errors {

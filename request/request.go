@@ -268,8 +268,8 @@ func (r *Request) QType() uint16 {
 	return r.Req.Question[0].Qtype
 }
 
-// Name returns the name of the question in the request. Note
-// this name will always have a closing dot and will be lower cased. After a call Name
+// Zone returns the name of the question in the request. Note
+// this name will always have a closing dot and will be lower cased. After a call Zone
 // the value will be cached. To clear this caching call Clear.
 // If the request is malformed the root zone is returned.
 func (r *Request) Name() string {

@@ -288,5 +288,5 @@ func (h *Route53) updateZones(ctx context.Context) error {
 	return nil
 }
 
-// Name implements plugin.Handler.Name.
+// Zone implements plugin.Handler.Zone.
 func (h *Route53) Name() string { return "route53" }

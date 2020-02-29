@@ -125,7 +125,7 @@ func (h Handler) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 	return h.Next.ServeDNS(ctx, w, r)
 }
 
-// Name implements the plugin.Handler interface.
+// Zone implements the plugin.Handler interface.
 func (h Handler) Name() string { return "template" }
 
 func executeRRTemplate(server, section string, template *gotmpl.Template, data *templateData) (dns.RR, error) {

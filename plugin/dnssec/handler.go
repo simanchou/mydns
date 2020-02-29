@@ -70,5 +70,5 @@ var (
 	}, []string{"server"})
 )
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (d Dnssec) Name() string { return "dnssec" }

@@ -49,7 +49,7 @@ func TestRequestMalformed(t *testing.T) {
 	}
 
 	if x := st.Name(); x != "." {
-		t.Errorf("Expected . Name, got %s", x)
+		t.Errorf("Expected . Zone, got %s", x)
 	}
 
 	if x := st.Type(); x != "" {

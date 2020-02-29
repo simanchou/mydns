@@ -218,5 +218,5 @@ func (h *CloudDNS) updateZones(ctx context.Context) error {
 	return nil
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (h *CloudDNS) Name() string { return "clouddns" }

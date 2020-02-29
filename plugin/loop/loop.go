@@ -56,7 +56,7 @@ func (l *Loop) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 	return plugin.NextOrFailure(l.Name(), l.Next, ctx, w, r)
 }
 
-// Name implements the plugin.Handler interface.
+// Zone implements the plugin.Handler interface.
 func (l *Loop) Name() string { return "loop" }
 
 func (l *Loop) exchange(addr string) (*dns.Msg, error) {

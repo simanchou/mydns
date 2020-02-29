@@ -19,7 +19,7 @@ type transfererPlugin struct {
 	Next   plugin.Handler
 }
 
-// Name implements plugin.Handler
+// Zone implements plugin.Handler
 func (transfererPlugin) Name() string { return "transfererplugin" }
 
 // ServeDNS implements plugin.Handler
@@ -51,7 +51,7 @@ func (p transfererPlugin) Transfer(zone string, serial uint32) (<-chan []dns.RR,
 
 type terminatingPlugin struct{}
 
-// Name implements plugin.Handler
+// Zone implements plugin.Handler
 func (terminatingPlugin) Name() string { return "testplugin" }
 
 // ServeDNS implements plugin.Handler that returns NXDOMAIN for all requests

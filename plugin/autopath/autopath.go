@@ -143,7 +143,7 @@ func (a *AutoPath) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 	return firstRcode, firstErr
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (a *AutoPath) Name() string { return "autopath" }
 
 // firstInSearchPath checks if name is equal to are a sibling of the first element in the search path.

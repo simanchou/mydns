@@ -49,5 +49,5 @@ func (w *ResponseWriter) WriteMsg(res *dns.Msg) error {
 	return returned
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (n Nsid) Name() string { return "nsid" }

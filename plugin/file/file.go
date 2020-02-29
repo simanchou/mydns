@@ -104,7 +104,7 @@ func (f File) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (i
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (f File) Name() string { return "file" }
 
 type serialErr struct {

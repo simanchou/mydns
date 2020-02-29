@@ -55,7 +55,7 @@ func (l Logger) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	return plugin.NextOrFailure(l.Name(), l.Next, ctx, w, r)
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (l Logger) Name() string { return "log" }
 
 // Rule configures the logging plugin.

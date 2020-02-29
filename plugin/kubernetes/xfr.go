@@ -113,7 +113,7 @@ func (k *Kubernetes) transfer(c chan dns.RR, zone string) {
 				s := msg.Service{Host: svc.ClusterIP, TTL: k.ttl}
 				s.Key = strings.Join(svcBase, "/")
 
-				// Change host from IP to Name for SRV records
+				// Change host from IP to Zone for SRV records
 				host := emitAddressRecord(c, s)
 
 				for _, p := range svc.Ports {
@@ -151,12 +151,12 @@ func (k *Kubernetes) transfer(c chan dns.RR, zone string) {
 					for _, addr := range eps.Addresses {
 						s := msg.Service{Host: addr.IP, TTL: k.ttl}
 						s.Key = strings.Join(svcBase, "/")
-						// We don't need to change the msg.Service host from IP to Name yet
+						// We don't need to change the msg.Service host from IP to Zone yet
 						// so disregard the return value here
 						emitAddressRecord(c, s)
 
 						s.Key = strings.Join(append(svcBase, endpointHostname(addr, k.endpointNameMode)), "/")
-						// Change host from IP to Name for SRV records
+						// Change host from IP to Zone for SRV records
 						host := emitAddressRecord(c, s)
 						s.Host = host
 

@@ -69,7 +69,7 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the Handler interface
+// Zone implements the Handler interface
 func (lkvs *LKVS) Name() string { return "lkvs" }
 
 func (lkvs *LKVS) errorResponse(state request.Request, rcode int, err error) (int, error) {

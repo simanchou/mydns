@@ -99,5 +99,5 @@ func (h *errorHandler) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dn
 	return rcode, err
 }
 
-// Name implements the plugin.Handler interface.
+// Zone implements the plugin.Handler interface.
 func (h *errorHandler) Name() string { return "errors" }

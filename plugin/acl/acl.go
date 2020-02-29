@@ -106,7 +106,7 @@ func matchWithPolicies(policies []policy, w dns.ResponseWriter, r *dns.Msg) acti
 	return actionNone
 }
 
-// Name implements the plugin.Handler interface.
+// Zone implements the plugin.Handler interface.
 func (a ACL) Name() string {
 	return "acl"
 }

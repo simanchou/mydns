@@ -80,7 +80,7 @@ func TestTrace(t *testing.T) {
 			rootSpan := fs[1]
 			req := request.Request{W: w, Req: tc.question}
 			if rootSpan.OperationName != spanName(ctx, req) {
-				t.Errorf("Unexpected span name: rootSpan.Name: want %v, got %v", spanName(ctx, req), rootSpan.OperationName)
+				t.Errorf("Unexpected span name: rootSpan.Zone: want %v, got %v", spanName(ctx, req), rootSpan.OperationName)
 			}
 			if rootSpan.Tag(tagName) != req.Name() {
 				t.Errorf("Unexpected span tag: rootSpan.Tag(%v): want %v, got %v", tagName, req.Name(), rootSpan.Tag(tagName))

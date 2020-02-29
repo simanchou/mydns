@@ -76,5 +76,5 @@ func (e *Etcd) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (e *Etcd) Name() string { return "etcd" }

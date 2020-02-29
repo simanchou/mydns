@@ -77,7 +77,7 @@ func (c *Cache) shouldPrefetch(i *item, now time.Time) bool {
 	return i.Freq.Hits() >= c.prefetch && i.ttl(now) <= threshold
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (c *Cache) Name() string { return "cache" }
 
 func (c *Cache) get(now time.Time, state request.Request, server string) (*item, bool) {

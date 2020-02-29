@@ -126,7 +126,7 @@ func TestNsAddrs(t *testing.T) {
 	}
 	expected = "dns-service.kube-system.svc.inter.webs.test."
 	if cdr.Header().Name != expected {
-		t.Errorf("Expected 1st Header Name to be %q, got %q", expected, cdr.Header().Name)
+		t.Errorf("Expected 1st Header Zone to be %q, got %q", expected, cdr.Header().Name)
 	}
 	cdr = cdrs[1]
 	expected = "10.244.0.20"
@@ -135,7 +135,7 @@ func TestNsAddrs(t *testing.T) {
 	}
 	expected = "10-244-0-20.hdls-dns-service.kube-system.svc.inter.webs.test."
 	if cdr.Header().Name != expected {
-		t.Errorf("Expected 2nd Header Name to be %q, got %q", expected, cdr.Header().Name)
+		t.Errorf("Expected 2nd Header Zone to be %q, got %q", expected, cdr.Header().Name)
 	}
 	cdr = cdrs[2]
 	expected = "10::111"
@@ -144,6 +144,6 @@ func TestNsAddrs(t *testing.T) {
 	}
 	expected = "dns6-service.kube-system.svc.inter.webs.test."
 	if cdr.Header().Name != expected {
-		t.Errorf("Expected AAAA Header Name to be %q, got %q", expected, cdr.Header().Name)
+		t.Errorf("Expected AAAA Header Zone to be %q, got %q", expected, cdr.Header().Name)
 	}
 }

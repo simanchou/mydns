@@ -144,7 +144,7 @@ func Section(tc Case, sec sect, rr []dns.RR) error {
 
 	for i, a := range rr {
 		if a.Header().Name != section[i].Header().Name {
-			return fmt.Errorf("RR %d should have a Header Name of %q, but has %q", i, section[i].Header().Name, a.Header().Name)
+			return fmt.Errorf("RR %d should have a Header Zone of %q, but has %q", i, section[i].Header().Name, a.Header().Name)
 		}
 		// 303 signals: don't care what the ttl is.
 		if section[i].Header().Ttl != 303 && a.Header().Ttl != section[i].Header().Ttl {
@@ -319,5 +319,5 @@ func (f HandlerFunc) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.
 	return f(ctx, w, r)
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (f HandlerFunc) Name() string { return "handlerfunc" }

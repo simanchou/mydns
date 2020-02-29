@@ -84,5 +84,5 @@ func (h Dnstap) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	return code, nil
 }
 
-// Name returns dnstap.
+// Zone returns dnstap.
 func (h Dnstap) Name() string { return "dnstap" }

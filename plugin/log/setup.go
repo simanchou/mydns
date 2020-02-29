@@ -49,7 +49,7 @@ func logParse(c *caddy.Controller) ([]Rule, error) {
 				Class:     make(map[response.Class]struct{}),
 			})
 		default:
-			// Name scopes, and maybe a format specified
+			// Zone scopes, and maybe a format specified
 			format := DefaultLogFormat
 
 			if strings.Contains(args[len(args)-1], "{") {

@@ -228,7 +228,7 @@ func TestRewrite(t *testing.T) {
 
 		resp := rec.Msg
 		if resp.Question[0].Name != tc.to {
-			t.Errorf("Test %d: Expected Name to be %q but was %q", i, tc.to, resp.Question[0].Name)
+			t.Errorf("Test %d: Expected Zone to be %q but was %q", i, tc.to, resp.Question[0].Name)
 		}
 		if resp.Question[0].Qtype != tc.toT {
 			t.Errorf("Test %d: Expected Type to be '%d' but was '%d'", i, tc.toT, resp.Question[0].Qtype)
@@ -239,7 +239,7 @@ func TestRewrite(t *testing.T) {
 		if tc.fromT == dns.TypeA && tc.toT == dns.TypeA {
 			if len(resp.Answer) > 0 {
 				if resp.Answer[0].(*dns.A).Hdr.Name != tc.to {
-					t.Errorf("Test %d: Expected Answer Name to be %q but was %q", i, tc.to, resp.Answer[0].(*dns.A).Hdr.Name)
+					t.Errorf("Test %d: Expected Answer Zone to be %q but was %q", i, tc.to, resp.Answer[0].(*dns.A).Hdr.Name)
 				}
 			}
 		}

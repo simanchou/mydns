@@ -54,7 +54,7 @@ func (e *Elem) All() []dns.RR {
 	return list
 }
 
-// Name returns the name for this node.
+// Zone returns the name for this node.
 func (e *Elem) Name() string {
 	if e.name != "" {
 		return e.name

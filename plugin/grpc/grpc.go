@@ -99,7 +99,7 @@ func newGRPC() *GRPC {
 	return g
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (g *GRPC) Name() string { return "grpc" }
 
 // Len returns the number of configured proxies.

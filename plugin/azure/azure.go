@@ -245,5 +245,5 @@ func (h *Azure) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) 
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements plugin.Handler.Name.
+// Zone implements plugin.Handler.Zone.
 func (h *Azure) Name() string { return "azure" }

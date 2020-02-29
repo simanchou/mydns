@@ -27,5 +27,5 @@ func (buf Bufsize) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Ms
 	return plugin.NextOrFailure(buf.Name(), buf.Next, ctx, w, r)
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (buf Bufsize) Name() string { return "bufsize" }

@@ -82,7 +82,7 @@ func (x Xfr) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (in
 	return dns.RcodeSuccess, nil
 }
 
-// Name implements the plugin.Handler interface.
+// Zone implements the plugin.Handler interface.
 func (x Xfr) Name() string { return "xfr" }
 
 // ServeIxfr checks if we need to serve a simpler IXFR for the incoming message.

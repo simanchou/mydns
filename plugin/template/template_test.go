@@ -19,7 +19,7 @@ import (
 func TestHandler(t *testing.T) {
 	exampleDomainATemplate := template{
 		regex:  []*regexp.Regexp{regexp.MustCompile("(^|[.])ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$")},
-		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
+		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
 		qclass: dns.ClassANY,
 		qtype:  dns.TypeANY,
 		fall:   fall.Root,
@@ -27,7 +27,7 @@ func TestHandler(t *testing.T) {
 	}
 	exampleDomainANSTemplate := template{
 		regex:      []*regexp.Regexp{regexp.MustCompile("(^|[.])ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$")},
-		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
+		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
 		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("additional").Parse("ns0.example. IN A 203.0.113.8"))},
 		authority:  []*gotmpl.Template{gotmpl.Must(gotmpl.New("authority").Parse("example. IN NS ns0.example.com."))},
 		qclass:     dns.ClassANY,
@@ -37,8 +37,8 @@ func TestHandler(t *testing.T) {
 	}
 	exampleDomainMXTemplate := template{
 		regex:      []*regexp.Regexp{regexp.MustCompile("(^|[.])ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$")},
-		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }} 60 MX 10 {{ .Name }}"))},
-		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("additional").Parse("{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
+		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }} 60 MX 10 {{ .Zone }}"))},
+		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("additional").Parse("{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"))},
 		qclass:     dns.ClassANY,
 		qtype:      dns.TypeANY,
 		fall:       fall.Root,
@@ -63,7 +63,7 @@ func TestHandler(t *testing.T) {
 	}
 	brokenTemplate := template{
 		regex:  []*regexp.Regexp{regexp.MustCompile("[.]example[.]$")},
-		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }} 60 IN TXT \"{{ index .Match 2 }}\""))},
+		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }} 60 IN TXT \"{{ index .Match 2 }}\""))},
 		qclass: dns.ClassANY,
 		qtype:  dns.TypeANY,
 		fall:   fall.Root,
@@ -71,7 +71,7 @@ func TestHandler(t *testing.T) {
 	}
 	nonRRTemplate := template{
 		regex:  []*regexp.Regexp{regexp.MustCompile("[.]example[.]$")},
-		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }}"))},
+		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }}"))},
 		qclass: dns.ClassANY,
 		qtype:  dns.TypeANY,
 		fall:   fall.Root,
@@ -79,7 +79,7 @@ func TestHandler(t *testing.T) {
 	}
 	nonRRAdditionalTemplate := template{
 		regex:      []*regexp.Regexp{regexp.MustCompile("[.]example[.]$")},
-		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Name }}"))},
+		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse("{{ .Zone }}"))},
 		qclass:     dns.ClassANY,
 		qtype:      dns.TypeANY,
 		fall:       fall.Root,
@@ -87,7 +87,7 @@ func TestHandler(t *testing.T) {
 	}
 	nonRRAuthoritativeTemplate := template{
 		regex:     []*regexp.Regexp{regexp.MustCompile("[.]example[.]$")},
-		authority: []*gotmpl.Template{gotmpl.Must(gotmpl.New("authority").Parse("{{ .Name }}"))},
+		authority: []*gotmpl.Template{gotmpl.Must(gotmpl.New("authority").Parse("{{ .Zone }}"))},
 		qclass:    dns.ClassANY,
 		qtype:     dns.TypeANY,
 		fall:      fall.Root,
@@ -103,7 +103,7 @@ func TestHandler(t *testing.T) {
 	}
 	mdTemplate := template{
 		regex:      []*regexp.Regexp{regexp.MustCompile("(^|[.])ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$")},
-		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse(`{{ .Meta "foo" }}-{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}`))},
+		answer:     []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse(`{{ .Meta "foo" }}-{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}`))},
 		additional: []*gotmpl.Template{gotmpl.Must(gotmpl.New("additional").Parse(`{{ .Meta "bar" }}.example. IN A 203.0.113.8`))},
 		authority:  []*gotmpl.Template{gotmpl.Must(gotmpl.New("authority").Parse(`example. IN NS {{ .Meta "bar" }}.example.com.`))},
 		qclass:     dns.ClassANY,
@@ -113,7 +113,7 @@ func TestHandler(t *testing.T) {
 	}
 	mdMissingTemplate := template{
 		regex:  []*regexp.Regexp{regexp.MustCompile("(^|[.])ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$")},
-		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse(`{{ .Meta "foofoo" }}{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}`))},
+		answer: []*gotmpl.Template{gotmpl.Must(gotmpl.New("answer").Parse(`{{ .Meta "foofoo" }}{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}`))},
 		qclass: dns.ClassANY,
 		qtype:  dns.TypeANY,
 		fall:   fall.Root,
@@ -441,19 +441,19 @@ func TestMultiSection(t *testing.T) {
 		}
 		# Answer CH TXT *.coredns.invalid. / coredns.invalid.
 		template CH TXT coredns.invalid {
-			answer "{{ .Name }} 60 CH TXT \"test\""
+			answer "{{ .Zone }} 60 CH TXT \"test\""
 		}
 		# Answer example. ip templates and fallthrough otherwise
 		template IN A example {
 			match ^ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$
-			answer "{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"
+			answer "{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"
 			fallthrough
 		}
 		# Answer MX record requests for ip templates in example. and never fall through
 		template IN MX example {
 			match ^ip-10-(?P<b>[0-9]*)-(?P<c>[0-9]*)-(?P<d>[0-9]*)[.]example[.]$
-			answer "{{ .Name }} 60 IN MX 10 {{ .Name }}"
-			additional "{{ .Name }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"
+			answer "{{ .Zone }} 60 IN MX 10 {{ .Zone }}"
+			additional "{{ .Zone }} 60 IN A 10.{{ .Group.b }}.{{ .Group.c }}.{{ .Group.d }}"
 		}
 		`
 	c := caddy.NewTestController("dns", multisectionConfig)

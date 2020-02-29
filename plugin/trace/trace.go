@@ -76,7 +76,7 @@ func (t *trace) setupZipkin() error {
 	return err
 }
 
-// Name implements the Handler interface.
+// Zone implements the Handler interface.
 func (t *trace) Name() string { return "trace" }
 
 // ServeDNS implements the plugin.Handle interface.

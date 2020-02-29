@@ -1,10 +1,12 @@
 package lkvs
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/satori/go.uuid"
+	"golang.org/x/crypto/scrypt"
 	"net/http"
 	"time"
 )
@@ -41,10 +43,11 @@ const (
 	ERROR_EXIST_USER     = 20002
 	ERROR_NOT_EXIST_USER = 20003
 
-	ERROR_AUTH_CHECK_TOKEN_FAIL    = 30001
-	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 30002
-	ERROR_AUTH_TOKEN               = 30003
-	ERROR_AUTH                     = 30004
+	ERROR_AUTH_MISS_TOKEN = 30001
+	ERROR_AUTH_CHECK_TOKEN_FAIL    = 30002
+	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 30003
+	ERROR_AUTH_TOKEN               = 30004
+	ERROR_AUTH                     = 30005
 )
 
 // MsgFlags flags of msg
@@ -76,6 +79,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR_ADD_USER_FAIL:"注册用户失败",
 	ERROR_EXIST_USER:                              "用户已存在",
 	ERROR_NOT_EXIST_USER:                          "用户不存在",
+	ERROR_AUTH_MISS_TOKEN:"缺失token,访问此url需要先认证授权",
 	ERROR_AUTH_CHECK_TOKEN_FAIL:                   "Token鉴权失败",
 	ERROR_AUTH_CHECK_TOKEN_TIMEOUT:                "Token已超时",
 	ERROR_AUTH_TOKEN:                              "Token生成失败",
@@ -115,8 +119,15 @@ func GenerateRecordID() string {
 	return fmt.Sprintf("%s", u4)
 }
 
+// EncryptionPassword encryption password
+var salt = []byte{5, 0, 7, 6, 9, 3, 9, 4}
+func EncryptionPassword(pw string) (ep string) {
+	dk, _ := scrypt.Key([]byte(pw), salt, 1<<15, 8, 1, 32)
+	return base64.StdEncoding.EncodeToString(dk)
+}
+
 // jwt util
-var jwtSecret = []byte("thisissecret")
+var jwtSecret = []byte("23347$040412")
 
 // Claims claims
 type Claims struct {
@@ -126,20 +137,20 @@ type Claims struct {
 }
 
 // GenerateToken generate token
-func GenerateToke(username, password string) (string, error) {
+func GenerateToke(u *User) (string, error) {
 	nowTime := time.Now()
 	expireTime := nowTime.Add(3 * time.Hour)
 
 	claims := Claims{
-		Username: username,
-		Password: password,
+		Username: u.Username,
+		Password: u.Password,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expireTime.Unix(),
 			Issuer:    "mydns",
 		},
 	}
 
-	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := tokenClaims.SignedString(jwtSecret)
 
 	return token, err
@@ -160,6 +171,17 @@ func ParseToken(token string) (*Claims, error) {
 	return nil, err
 }
 
+// GetUserFromToken
+func GetUserFromToken(c *gin.Context) (userName string, err error) {
+	var claims *Claims
+	token := c.Query("token")
+	claims, err = ParseToken(token)
+	if err != nil {
+		return "", err
+	}
+	return claims.Username, nil
+}
+
 // JWT jwt middleware for gin
 func JWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -169,7 +191,7 @@ func JWT() gin.HandlerFunc {
 		code = SUCCESS
 		token := c.Query("token")
 		if token == "" {
-			code = INVALID_PARAMS
+			code = ERROR_AUTH_MISS_TOKEN
 		} else {
 			claims, err := ParseToken(token)
 			if err != nil {

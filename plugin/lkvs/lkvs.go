@@ -20,7 +20,7 @@ import (
 const (
 	// BucketNameForDomain bucket name
 	BucketNameForDomain = "domain"
-	BucketNameForUser = "user"
+	BucketNameForUser   = "user"
 	defaultTTL          = 600
 )
 
@@ -46,7 +46,8 @@ type User struct {
 
 // Zone domain zone with records
 type Zone struct {
-	Name    string             `json:"name,omitempty"`
+	Zone    string             `json:"zone,omitempty"`
+	User    string             `json:"user"`
 	SOA     SOARecord          `json:"soa,omitempty"`
 	Records map[string]*Record `json:"records,omitempty"`
 }
@@ -565,7 +566,7 @@ func EditMXRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validat
 	preference := DeleteSpace(c.Query("preference"))
 	ttl := DeleteSpace(c.Query("ttl"))
 
-	if host == "" && ttl == "" && preference == ""{
+	if host == "" && ttl == "" && preference == "" {
 		return INVALID_PARAMS,
 			NewValidationError(INVALID_PARAMS, "host + preference + ttl", "host + preference + ttl",
 				"host,preference,ttl不能全为空")
@@ -593,7 +594,7 @@ func EditSRVRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *valida
 	weight := DeleteSpace(c.Query("weight"))
 	ttl := DeleteSpace(c.Query("ttl"))
 
-	if target == "" && port == "" && priority == ""&& weight == "" && ttl == ""{
+	if target == "" && port == "" && priority == "" && weight == "" && ttl == "" {
 		return INVALID_PARAMS,
 			NewValidationError(INVALID_PARAMS, "target + port + priority + weight + ttl",
 				"target + port + priority + weight + ttl",
@@ -627,7 +628,7 @@ func EditCAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *valida
 	value := DeleteSpace(c.Query("value"))
 	ttl := DeleteSpace(c.Query("ttl"))
 
-	if flag == "" && tag == "" && value == "" && ttl == ""{
+	if flag == "" && tag == "" && value == "" && ttl == "" {
 		return INVALID_PARAMS,
 			NewValidationError(INVALID_PARAMS, "flag + tag + value + ttl",
 				"flag + tag + value + ttl",
@@ -668,9 +669,9 @@ func (lkvs *LKVS) LoadZones() {
 				fmt.Println("decode fail, error: ", err)
 				return err
 			}
-			_zoneName = append(_zoneName, _z.Name)
+			_zoneName = append(_zoneName, _z.Zone)
 			lkvs.ZonesName = _zoneName
-			lkvs.ZonesWithRecords[_z.Name] = _z
+			lkvs.ZonesWithRecords[_z.Zone] = _z
 		}
 		return nil
 	})
@@ -689,12 +690,12 @@ func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
 			log.Println("encode fail, error: ", err)
 			return err
 		}
-		return b.Put([]byte(z.Name), encode)
+		return b.Put([]byte(z.Zone), encode)
 	})
 	return
 }
 
- */
+*/
 
 // Save save to db
 func (lkvs *LKVS) Save(bn string, data interface{}) (err error) {
@@ -708,7 +709,7 @@ func (lkvs *LKVS) Save(bn string, data interface{}) (err error) {
 		switch data.(type) {
 		case *Zone:
 			z, _ := data.(*Zone)
-			return b.Put([]byte(z.Name), encode)
+			return b.Put([]byte(z.Zone), encode)
 		case User:
 			u, _ := data.(User)
 			return b.Put([]byte(u.Username), encode)
@@ -733,7 +734,7 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 
 // A query of type A
 func (lkvs *LKVS) A(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "A" && _r.SubDomain == subDomain {
 			r := new(dns.A)
@@ -750,7 +751,7 @@ func (lkvs *LKVS) A(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type AAAA
 func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
 			r := new(dns.AAAA)
@@ -767,7 +768,7 @@ func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type TXT
 func (lkvs *LKVS) TXT(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "TXT" && _r.SubDomain == subDomain {
 			r := new(dns.TXT)
@@ -784,7 +785,7 @@ func (lkvs *LKVS) TXT(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type CNAME
 func (lkvs *LKVS) CNAME(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
 			r := new(dns.CNAME)
@@ -801,7 +802,7 @@ func (lkvs *LKVS) CNAME(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type MX
 func (lkvs *LKVS) MX(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "MX" && _r.SubDomain == subDomain {
 			r := new(dns.MX)
@@ -819,7 +820,7 @@ func (lkvs *LKVS) MX(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type SRV
 func (lkvs *LKVS) SRV(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "SRV" && _r.SubDomain == subDomain {
 			r := new(dns.SRV)
@@ -839,7 +840,7 @@ func (lkvs *LKVS) SRV(name string, z Zone) (answers, extras []dns.RR) {
 
 // A query of type CAA
 func (lkvs *LKVS) CAA(name string, z Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Name)
+	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "CAA" && _r.SubDomain == subDomain {
 			r := new(dns.CAA)
@@ -868,7 +869,7 @@ func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
 		r.Expire = 3600
 		r.Minttl = defaultTTL
 	} else {
-		r.Hdr = dns.RR_Header{Name: z.Name, Rrtype: dns.TypeSOA,
+		r.Hdr = dns.RR_Header{Name: z.Zone, Rrtype: dns.TypeSOA,
 			Class: dns.ClassINET, Ttl: CheckTTL(z.SOA.TTL)}
 		r.Ns = z.SOA.Ns
 		r.Mbox = z.SOA.MBox
@@ -895,17 +896,17 @@ func (lkvs *LKVS) UserIsExist(username string) bool {
 	return ok
 }
 
-func (lkvs *LKVS)CheckAuth(username, password string) bool {
+func (lkvs *LKVS) CheckAuth(u *User) bool {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BucketNameForUser))
-		v := b.Get([]byte(username))
+		v := b.Get([]byte(u.Username))
 
-		var u User
-		err := json.Unmarshal(v, &u)
+		var _u User
+		err := json.Unmarshal(v, &_u)
 		if err != nil {
 			return err
 		}
-		if password == u.Password {
+		if u.Password == _u.Password {
 			return nil
 		}
 		return errors.New("wrong password")
