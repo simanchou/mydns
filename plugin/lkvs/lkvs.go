@@ -40,8 +40,9 @@ type LKVS struct {
 
 // User user struct
 type User struct {
-	Username string `valid:"Required; MaxSize(50)"`
-	Password string `valid:"Required; MaxSize(50)"`
+	Username string `valid:"Required; MaxSize(50)" json:"username"`
+	Password string `valid:"Required; MaxSize(50)" json:"password,omitempty"`
+	CreateAt time.Time `json:"create_at"`
 }
 
 // Zone domain zone with records
@@ -156,6 +157,14 @@ type SOARecord struct {
 }
 
 */
+
+func NewUser(username, password string) *User {
+	return &User{
+		Username: username,
+		Password: EncryptionPassword(password),
+		CreateAt:time.Now(),
+	}
+}
 
 func NewZone() *Zone {
 	return &Zone{
@@ -710,8 +719,8 @@ func (lkvs *LKVS) Save(bn string, data interface{}) (err error) {
 		case *Zone:
 			z, _ := data.(*Zone)
 			return b.Put([]byte(z.Zone), encode)
-		case User:
-			u, _ := data.(User)
+		case *User:
+			u, _ := data.(*User)
 			return b.Put([]byte(u.Username), encode)
 		}
 		return errors.New("unsupported storage type in db")
@@ -883,17 +892,20 @@ func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
 	return
 }
 
-func (lkvs *LKVS) UserIsExist(username string) bool {
+func (lkvs *LKVS) UserIsExist(username string) (*User, bool) {
+	u := User{}
 	ok := true
 	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BucketNameForUser))
 		v := b.Get([]byte(username))
 		if v == nil {
 			ok = false
+		} else {
+			json.Unmarshal(v, &u)
 		}
 		return nil
 	})
-	return ok
+	return &u, ok
 }
 
 func (lkvs *LKVS) CheckAuth(u *User) bool {
@@ -915,6 +927,41 @@ func (lkvs *LKVS) CheckAuth(u *User) bool {
 		return false
 	}
 	return true
+}
+
+// get all user from db
+func (lkvs *LKVS) GetAllUsers() (users map[string]User) {
+	users = make(map[string]User)
+	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForUser))
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			_u := User{}
+			err := json.Unmarshal(v, &_u)
+			if err != nil {
+				return err
+			}
+
+			// hide password for user query
+			_u.Password = ""
+			users[_u.Username] = _u
+		}
+		return nil
+	})
+	return
+}
+
+// DeleteUser delete user in db
+func (lkvs *LKVS) DeleteUserInDB(username string) (err error) {
+	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForUser))
+		err := b.Delete([]byte(username))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
 }
 
 func CheckTTL(ttl uint32) uint32 {

@@ -47,6 +47,10 @@ func (lkvs *LKVS) InitRouter() {
 		api.POST("/record", lkvs.apiAddRecord)
 		api.PUT("/record", lkvs.apiEditRecord)
 		api.DELETE("/record", lkvs.apiDeleteRecord)
+
+		api.GET("/user", lkvs.apiGetUsers)
+		api.PUT("/user", lkvs.apiEditUser)
+		api.DELETE("/user", lkvs.apiDeleteUser)
 	}
 
 	lkvs.APIEngine = engine
@@ -59,11 +63,11 @@ func (lkvs *LKVS) register(c *gin.Context) {
 	password := DeleteSpace(c.Query("password"))
 
 	valid := validation.Validation{}
-	u := User{Username: username, Password: EncryptionPassword(password)}
-	ok, _ := valid.Valid(&u)
+	u := NewUser(username, password)
+	ok, _ := valid.Valid(u)
 
 	if ok {
-		isExist := lkvs.UserIsExist(u.Username)
+		_, isExist := lkvs.UserIsExist(u.Username)
 		if ! isExist {
 			err := lkvs.Save(BucketNameForUser, u)
 			if err != nil {
@@ -90,18 +94,22 @@ func (lkvs *LKVS) GetAuth(c *gin.Context) {
 	password := DeleteSpace(c.Query("password"))
 
 	valid := validation.Validation{}
-	u := User{Username: username, Password: EncryptionPassword(password)}
-	ok, _ := valid.Valid(&u)
+	u := NewUser(username, password)
+	ok, err := valid.Valid(u)
+	if err != nil {
+		g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+		return
+	}
 
 	data := make(map[string]interface{})
 	code := INVALID_PARAMS
 
 	if ok {
-		isExist := lkvs.UserIsExist(u.Username)
+		_, isExist := lkvs.UserIsExist(u.Username)
 		if isExist {
-			isAuth := lkvs.CheckAuth(&u)
+			isAuth := lkvs.CheckAuth(u)
 			if isAuth {
-				token, err := GenerateToke(&u)
+				token, err := GenerateToke(u)
 				if err != nil {
 					code = ERROR_AUTH_TOKEN
 				} else {
@@ -109,7 +117,7 @@ func (lkvs *LKVS) GetAuth(c *gin.Context) {
 					code = SUCCESS
 				}
 			} else {
-				code = ERROR_AUTH
+				code = ERROR_AUTH_WRONG_PASSWORD
 			}
 		} else {
 			code = ERROR_NOT_EXIST_USER
@@ -528,4 +536,125 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 		g.Response(http.StatusInternalServerError, ERROR_DELETE_RECORD_FAIL, nil)
 	}
 	g.Response(http.StatusOK, SUCCESS, nil)
+}
+
+// get user
+func (lkvs *LKVS) apiGetUsers(c *gin.Context) {
+	g := Gin{C:c}
+	user, err := GetUserFromToken(c)
+	if err != nil {
+		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+		return
+	}
+
+	data := lkvs.GetAllUsers()
+	if user == "admin" {
+		g.Response(http.StatusOK, SUCCESS, data)
+	} else {
+		_data := make(map[string]User)
+		for k, v := range data {
+			if v.Username == user {
+				_data[k] = v
+			}
+		}
+		g.Response(http.StatusOK, SUCCESS,_data)
+	}
+}
+
+// edit user
+func (lkvs *LKVS) apiEditUser(c *gin.Context) {
+	g := Gin{C:c}
+	userFromToken, err := GetUserFromToken(c)
+	if err != nil {
+		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+		return
+	}
+	userFromForm := DeleteSpace(c.Query("user"))
+
+	userForModify := ""
+	switch {
+	case userFromToken == "admin" && userFromForm != "":
+		userForModify = userFromForm
+	default:
+		userForModify = userFromToken
+	}
+
+	u, isExist := lkvs.UserIsExist(userForModify)
+	if isExist {
+		oldPW := DeleteSpace(c.Query("old_password"))
+		newPW := DeleteSpace(c.Query("new_password"))
+
+		type pwCheck struct {
+			OldPW string `valid:"Required; MaxSize(50)"`
+			NewPW string `valid:"Required; MaxSize(50)"`
+		}
+
+		pc := pwCheck{OldPW:oldPW, NewPW:newPW}
+		valid := validation.Validation{}
+		ok, err := valid.Valid(pc)
+		if err != nil {
+			g.Response(http.StatusOK, ERROR_REQUIRE_CHECK_FAIL, err)
+		}
+
+		if ok {
+			u.Password = EncryptionPassword(oldPW)
+			isAuth := lkvs.CheckAuth(u)
+			if isAuth {
+				u.Password = EncryptionPassword(newPW)
+				err := lkvs.Save(BucketNameForUser, u)
+				if err != nil {
+					g.Response(http.StatusOK, ERROR_EDIT_USER_FAIL, nil)
+					return
+				}
+				g.Response(http.StatusOK, SUCCESS,nil)
+			} else {
+				g.Response(http.StatusOK,ERROR_OLD_PASSWORD_WRONG,nil)
+				return
+			}
+		} else {
+			g.Response(http.StatusOK, ERROR_REQUIRE_CHECK_FAIL,
+				&validation.Error{
+					Message: GetCodeMsg(ERROR_REQUIRE_CHECK_FAIL),
+					Key:     "old_password or new_password",
+					Name:    "old_password or new_password",
+					Value:   "不能为空，并且长度不能超过50个字符",
+				})
+		}
+	} else {
+		g.Response(http.StatusOK, ERROR_NOT_EXIST_USER, nil)
+		return
+	}
+}
+
+// delete user
+func (lkvs *LKVS) apiDeleteUser(c *gin.Context) {
+	g := Gin{C:c}
+	userFromToken, err := GetUserFromToken(c)
+	if err != nil {
+		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+		return
+	}
+
+	if userFromToken == "admin" {
+		user := DeleteSpace(c.Query("user"))
+		if user == "admin" {
+			g.Response(http.StatusOK, ERROR_AUTH_ADMIN_CAN_NOT_DELETE,nil)
+			return
+		}
+		_, isExist := lkvs.UserIsExist(user)
+		if isExist {
+			err := lkvs.DeleteUserInDB(user)
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_DELETE_USER_FAIL,nil)
+				return
+			}
+			g.Response(http.StatusOK,SUCCESS,nil)
+		} else {
+			g.Response(http.StatusOK, ERROR_NOT_EXIST_USER, nil)
+			return
+		}
+
+	} else {
+		g.Response(http.StatusOK, ERROR_AUTH_ALLOW_ADMIN_ONLY, nil)
+	}
 }

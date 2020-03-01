@@ -16,6 +16,7 @@ const (
 	ERROR               = 500
 	INVALID_RECORD_TYPE = 300
 	INVALID_PARAMS      = 400
+	ERROR_REQUIRE_CHECK_FAIL = 600
 
 	ERROR_EXIST_ZONE                              = 10001
 	ERROR_EXIST_ZONE_FAIL                         = 10002
@@ -39,15 +40,21 @@ const (
 	ERROR_GET_RECORDS_FAIL   = 10028
 	ERROR_GET_RECORD_FAIL    = 10029
 
-	ERROR_ADD_USER_FAIL = 20001
-	ERROR_EXIST_USER     = 20002
-	ERROR_NOT_EXIST_USER = 20003
+	ERROR_ADD_USER_FAIL      = 20001
+	ERROR_EXIST_USER         = 20002
+	ERROR_NOT_EXIST_USER     = 20003
+	ERROR_EDIT_USER_FAIL     = 20004
+	ERROR_OLD_PASSWORD_WRONG = 20005
+	ERROR_DELETE_USER_FAIL = 20006
 
 	ERROR_AUTH_MISS_TOKEN = 30001
 	ERROR_AUTH_CHECK_TOKEN_FAIL    = 30002
 	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 30003
 	ERROR_AUTH_TOKEN               = 30004
 	ERROR_AUTH                     = 30005
+	ERROR_AUTH_WRONG_PASSWORD = 30006
+	ERROR_AUTH_ALLOW_ADMIN_ONLY = 30007
+	ERROR_AUTH_ADMIN_CAN_NOT_DELETE = 30008
 )
 
 // MsgFlags flags of msg
@@ -56,6 +63,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR:                  "fail",
 	INVALID_RECORD_TYPE:    "错误的记录类型",
 	INVALID_PARAMS:         "请求参数错误",
+	ERROR_REQUIRE_CHECK_FAIL:"条件限制检验失败",
 	ERROR_EXIST_ZONE:       "已存在该域名",
 	ERROR_EXIST_ZONE_FAIL:  "获取已存在域名失败",
 	ERROR_NOT_EXIST_ZONE:   "该域名不存在",
@@ -70,20 +78,26 @@ var CodeMsgFlags = map[int]string{
 	ERROR_EXIST_RECORD:                            "该记录已存在",
 	ERROR_NOT_EXIST_RECORD:                        "该记录不存在",
 	ERROR_ADD_RECORD_FAIL:                         "新增记录失败",
-	ERROR_DELETE_RECORD_FAIL:                      "删除记录失败",
-	ERROR_EXIST_RECORD_FAIL:                       "检查已存在记录失败",
-	ERROR_EDIT_RECORD_FAIL:                        "修改记录失败",
-	ERROR_COUNT_RECORD_FAIL:                       "统计记录失败",
-	ERROR_GET_RECORDS_FAIL:                        "获取多个记录失败",
-	ERROR_GET_RECORD_FAIL:                         "获取单个记录失败",
-	ERROR_ADD_USER_FAIL:"注册用户失败",
-	ERROR_EXIST_USER:                              "用户已存在",
-	ERROR_NOT_EXIST_USER:                          "用户不存在",
-	ERROR_AUTH_MISS_TOKEN:"缺失token,访问此url需要先认证授权",
-	ERROR_AUTH_CHECK_TOKEN_FAIL:                   "Token鉴权失败",
-	ERROR_AUTH_CHECK_TOKEN_TIMEOUT:                "Token已超时",
-	ERROR_AUTH_TOKEN:                              "Token生成失败",
-	ERROR_AUTH:                                    "Token错误",
+	ERROR_DELETE_RECORD_FAIL:       "删除记录失败",
+	ERROR_EXIST_RECORD_FAIL:        "检查已存在记录失败",
+	ERROR_EDIT_RECORD_FAIL:         "修改记录失败",
+	ERROR_COUNT_RECORD_FAIL:        "统计记录失败",
+	ERROR_GET_RECORDS_FAIL:         "获取多个记录失败",
+	ERROR_GET_RECORD_FAIL:          "获取单个记录失败",
+	ERROR_ADD_USER_FAIL:            "注册用户失败",
+	ERROR_EXIST_USER:               "用户已存在",
+	ERROR_NOT_EXIST_USER:           "用户不存在",
+	ERROR_EDIT_USER_FAIL:           "编辑用户失败",
+	ERROR_OLD_PASSWORD_WRONG:       "旧密码错误",
+	ERROR_DELETE_USER_FAIL:"删除用户失败",
+	ERROR_AUTH_MISS_TOKEN:          "缺失token,访问此url需要先认证授权",
+	ERROR_AUTH_CHECK_TOKEN_FAIL:    "Token鉴权失败",
+	ERROR_AUTH_CHECK_TOKEN_TIMEOUT: "Token已超时",
+	ERROR_AUTH_TOKEN:               "Token生成失败",
+	ERROR_AUTH:                     "Token错误",
+	ERROR_AUTH_WRONG_PASSWORD: "密码错误",
+	ERROR_AUTH_ALLOW_ADMIN_ONLY:"仅允许超管执行该操作",
+	ERROR_AUTH_ADMIN_CAN_NOT_DELETE:"超管不允许被删除",
 }
 
 // GetMsg get error msg of error code

@@ -50,7 +50,7 @@ func init() {
 			return err
 		}
 
-		u := User{Username: "admin", Password: EncryptionPassword("123456")}
+		u := NewUser("admin", "123456")
 		encode, _ := json.Marshal(u)
 		err = b.Put([]byte(u.Username), encode)
 		return err
