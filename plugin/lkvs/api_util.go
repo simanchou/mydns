@@ -39,6 +39,7 @@ const (
 	ERROR_COUNT_RECORD_FAIL  = 10027
 	ERROR_GET_RECORDS_FAIL   = 10028
 	ERROR_GET_RECORD_FAIL    = 10029
+	ERROR_CAN_NOT_DELETE_NS_RECORD = 10030
 
 	ERROR_ADD_USER_FAIL      = 20001
 	ERROR_EXIST_USER         = 20002
@@ -84,6 +85,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR_COUNT_RECORD_FAIL:        "统计记录失败",
 	ERROR_GET_RECORDS_FAIL:         "获取多个记录失败",
 	ERROR_GET_RECORD_FAIL:          "获取单个记录失败",
+	ERROR_CAN_NOT_DELETE_NS_RECORD:"不能删除类型为NS的记录",
 	ERROR_ADD_USER_FAIL:            "注册用户失败",
 	ERROR_EXIST_USER:               "用户已存在",
 	ERROR_NOT_EXIST_USER:           "用户不存在",

@@ -742,25 +742,69 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 }
 
 // A query of type A
-func (lkvs *LKVS) A(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) A(name string, z Zone) (isCNAME bool, CNAMEHost string, answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
+
+	isWildcard := true
+	isCNAME = false
+	CNAMEHost = ""
 	for _, _r := range z.Records {
 		if _r.Type == "A" && _r.SubDomain == subDomain {
-			r := new(dns.A)
-			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeA,
-				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.A = _r.IP
-			answers = append(answers, r)
-		} else {
-			continue
+			isWildcard = false
+		}
+		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+			isWildcard = false
+			isCNAME = true
+			CNAMEHost = _r.Host
 		}
 	}
+	if isWildcard {
+		subDomain = "*"
+	}
+
+	if isCNAME {
+		for _, _r := range z.Records {
+			if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+				r := new(dns.CNAME)
+				r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
+					Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+				r.Target = _r.Host
+				answers = append(answers, r)
+			} else {
+				continue
+			}
+		}
+	} else {
+		for _, _r := range z.Records {
+			if _r.Type == "A" && _r.SubDomain == subDomain {
+				r := new(dns.A)
+				r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeA,
+					Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+				r.A = _r.IP
+				answers = append(answers, r)
+			} else {
+				continue
+			}
+		}
+	}
+
 	return
 }
 
 // A query of type AAAA
 func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
+
+	isWildcard := true
+	for _, _r := range z.Records {
+		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
+			isWildcard = false
+		}
+	}
+	if isWildcard {
+		subDomain = "*"
+	}
+
 	for _, _r := range z.Records {
 		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
 			r := new(dns.AAAA)
@@ -889,6 +933,23 @@ func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
 	}
 	r.Serial = lkvs.serial()
 	answers = append(answers, r)
+	return
+}
+
+// A query of type NS
+func (lkvs *LKVS) NS(name string, z Zone) (answers, extras []dns.RR) {
+	subDomain := FindSubDomain(name, z.Zone)
+	for _, _r := range z.Records {
+		if _r.Type == "NS" && _r.SubDomain == subDomain {
+			r := new(dns.NS)
+			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
+				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
+			r.Ns = _r.Host
+			answers = append(answers, r)
+		} else {
+			continue
+		}
+	}
 	return
 }
 

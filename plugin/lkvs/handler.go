@@ -3,7 +3,6 @@ package lkvs
 import (
 	"context"
 	"fmt"
-
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
@@ -12,6 +11,9 @@ import (
 // ServeDNS implements the plugin.Handler interface
 func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
+	fmt.Printf("r: %#v\n", r)
+	fmt.Printf("state: %#v\n", state)
+	fmt.Printf("state.writer: %#v\n", state.W)
 
 	qname := state.Name()
 	qtype := state.Type()
@@ -38,7 +40,24 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 
 	switch qtype {
 	case "A":
-		answers, extras = lkvs.A(qname, zone)
+		var (
+			isCNAME bool
+			CNAMEHost string
+		)
+		isCNAME, CNAMEHost, answers, extras = lkvs.A(qname, zone)
+		if isCNAME {
+			zoneNameInCNAME := plugin.Zones(lkvs.ZonesName).Matches(CNAMEHost)
+			if zoneNameInCNAME == "" {
+				answers1, extras1 := q(CNAMEHost, "", "A", "IN")
+				answers = append(answers, answers1...)
+				extras = append(extras, extras1...)
+			} else {
+				zoneInCNAME := lkvs.ZonesWithRecords[zoneNameInCNAME]
+				_, _, answers2, extras2 := lkvs.A(CNAMEHost, zoneInCNAME)
+				answers = append(answers, answers2...)
+				extras = append(extras, extras2...)
+			}
+		}
 	case "AAAA":
 		answers, extras = lkvs.AAAA(qname, zone)
 	case "TXT":
@@ -53,18 +72,23 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		answers, extras = lkvs.CAA(qname, zone)
 	case "SOA":
 		answers, extras = lkvs.SOA(qname, zone)
+	case "NS":
+		answers, extras = lkvs.NS(qname, zone)
 	default:
 		return lkvs.errorResponse(state, dns.RcodeNotImplemented, nil)
 	}
 
 	m := new(dns.Msg)
 	m.SetReply(r)
-	m.Authoritative, m.RecursionAvailable, m.Compress = true, false, true
+	m.Authoritative, m.RecursionAvailable, m.Compress = true, true, true
 	m.Answer = append(m.Answer, answers...)
 	m.Extra = append(m.Extra, extras...)
+	fmt.Printf("answers: %#v\n", answers)
+	fmt.Printf("m.answers: %#v\n", m.Answer)
 
 	state.SizeAndDo(m)
 	m = state.Scrub(m)
+	fmt.Printf("%#v\n", m.Answer)
 	w.WriteMsg(m)
 	return dns.RcodeSuccess, nil
 }

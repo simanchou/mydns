@@ -182,7 +182,20 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 			z.Zone = zoneName
 			z.User = user
 			z.SOA.MBox = fmt.Sprintf("admin.%s", zoneName)
-			z.SOA.Ns = "ns.mydns.local."
+			z.SOA.Ns = "ns1.mydns.local."
+
+			z.Records = make(map[string]*Record)
+			nsRecord1 := NewRecord()
+			nsRecord1.Type = "NS"
+			nsRecord1.SubDomain = "@"
+			nsRecord1.Host = "ns1.mydns.local."
+			nsRecord2 := NewRecord()
+			nsRecord2.Type = "NS"
+			nsRecord2.SubDomain = "@"
+			nsRecord2.Host = "ns2.mydns.local."
+
+			z.Records[nsRecord1.ID] = nsRecord1
+			z.Records[nsRecord2.ID] = nsRecord2
 		}
 	} else {
 		for _, err := range valid.Errors {
@@ -218,7 +231,13 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 			// 判断域名是否属于该用户
 			if _z.User == user || user == "admin" {
 				// 判断域名的记录列表是否为空，不为空的话则不允许删除域名
-				if _z.Records == nil {
+				userRecord := 0
+				for _, r := range _z.Records {
+					if r.Type != "NS" {
+						userRecord += 1
+					}
+				}
+				if userRecord == 0 {
 					delete(lkvs.ZonesWithRecords, zoneName)
 				} else {
 					g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
@@ -307,9 +326,6 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 			if _z.User == user || user == "admin" {
 				var z *Zone
 				z = &_z
-				if z.Records == nil {
-					z.Records = make(map[string]*Record)
-				}
 				switch strings.ToUpper(rType) {
 				case "A":
 					code, err := AddARecordToZone(z, ttl, c)
@@ -510,8 +526,13 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
 			if _z.User == user || user == "admin" {
 				z = &_z
-				if _, ok := z.Records[id]; ok {
-					delete(z.Records, id)
+				if r, ok := z.Records[id]; ok {
+					if r.Type != "NS" {
+						delete(z.Records, id)
+					} else {
+						g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_NS_RECORD, nil)
+						return
+					}
 				} else {
 					g.Response(http.StatusOK, ERROR_NOT_EXIST_RECORD, nil)
 					return
