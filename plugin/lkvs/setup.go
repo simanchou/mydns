@@ -8,6 +8,9 @@ import (
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
 	"log"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -17,7 +20,11 @@ var RLKVS = &LKVS{ZonesWithRecords:make(map[string]Zone)}
 func init() {
 	var err error
 	if RLKVS.DBFile == "" {
-		RLKVS.DBFile = "dns.db"
+		absDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+			log.Fatalf("get current dir of db file fail, error: %s\n", err)
+		}
+		RLKVS.DBFile = path.Join(absDir, "dns.db")
 	}
 	if RLKVS.APIPort == 0 {
 		RLKVS.APIPort = 5500
