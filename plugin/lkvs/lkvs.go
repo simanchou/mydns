@@ -29,7 +29,7 @@ type LKVS struct {
 	Next             plugin.Handler
 	DB               *bolt.DB
 	DBFile           string
-	DBReadTimout     int
+	DBReadTimeout    int
 	APIEngine        *gin.Engine
 	APIPort          int
 	TTL              uint32

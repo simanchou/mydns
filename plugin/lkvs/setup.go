@@ -33,7 +33,7 @@ func init() {
 	RLKVS.DB, err = bolt.Open(
 		RLKVS.DBFile,
 		0600,
-		&bolt.Options{Timeout:time.Duration(RLKVS.DBReadTimout)*time.Second})
+		&bolt.Options{Timeout:time.Duration(RLKVS.DBReadTimeout)*time.Second})
 	log.Println("begin to open db file...")
 	if err != nil {
 		log.Fatalln("open db fail")
@@ -112,9 +112,9 @@ func lkvsParse(c *caddy.Controller) (err error) {
 					if !c.NextArg() {
 						return c.ArgErr()
 					}
-					RLKVS.DBReadTimout, err = strconv.Atoi(c.Val())
+					RLKVS.DBReadTimeout, err = strconv.Atoi(c.Val())
 					if err != nil {
-						RLKVS.DBReadTimout = 1
+						RLKVS.DBReadTimeout = 1
 					}
 				default:
 					if c.Val() != "}" {
