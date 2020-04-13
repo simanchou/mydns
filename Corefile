@@ -7,7 +7,12 @@
   #  reload 1m
   #  fallthrough
   #}
-   lkvs
+  lkvs {
+    db_file /home/zhao/go/src/mydns/dns.db
+    api_port 5500
+    master 127.0.0.1:5500
+    slave 192.168.1.50:5500,192.168.1.51:5500
+  }
 
   forward . 114.114.114.114:53
  # forward . /etc/resolv.conf

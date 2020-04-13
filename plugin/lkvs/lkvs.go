@@ -33,6 +33,8 @@ type LKVS struct {
 	APIEngine        *gin.Engine
 	APIPort          int
 	TTL              uint32
+	Master           string
+	Slave            []string
 	ZonesName        []string
 	ZonesWithRecords map[string]Zone
 	LastZoneUpdate   time.Time
@@ -40,8 +42,8 @@ type LKVS struct {
 
 // User user struct
 type User struct {
-	Username string `valid:"Required; MaxSize(50)" json:"username"`
-	Password string `valid:"Required; MaxSize(50)" json:"password,omitempty"`
+	Username string    `valid:"Required; MaxSize(50)" json:"username"`
+	Password string    `valid:"Required; MaxSize(50)" json:"password,omitempty"`
 	CreateAt time.Time `json:"create_at"`
 }
 
@@ -162,7 +164,7 @@ func NewUser(username, password string) *User {
 	return &User{
 		Username: username,
 		Password: EncryptionPassword(password),
-		CreateAt:time.Now(),
+		CreateAt: time.Now(),
 	}
 }
 

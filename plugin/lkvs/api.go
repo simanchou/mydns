@@ -5,6 +5,7 @@ import (
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/unknwon/com"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +26,10 @@ func (lkvs *LKVS) APIStart() {
 		MaxHeaderBytes:    1 << 20,
 	}
 
-	s.ListenAndServe()
+	err := s.ListenAndServe()
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 
 func (lkvs *LKVS) InitRouter() {
@@ -58,7 +62,7 @@ func (lkvs *LKVS) InitRouter() {
 
 // register
 func (lkvs *LKVS) register(c *gin.Context) {
-	g := Gin{C:c}
+	g := Gin{C: c}
 	username := DeleteSpace(c.Query("username"))
 	password := DeleteSpace(c.Query("password"))
 
@@ -68,7 +72,7 @@ func (lkvs *LKVS) register(c *gin.Context) {
 
 	if ok {
 		_, isExist := lkvs.UserIsExist(u.Username)
-		if ! isExist {
+		if !isExist {
 			err := lkvs.Save(BucketNameForUser, u)
 			if err != nil {
 				g.Response(http.StatusOK, ERROR_ADD_USER_FAIL, nil)
@@ -89,7 +93,7 @@ func (lkvs *LKVS) register(c *gin.Context) {
 
 //GetAuth
 func (lkvs *LKVS) GetAuth(c *gin.Context) {
-	g := Gin{C:c}
+	g := Gin{C: c}
 	username := DeleteSpace(c.Query("username"))
 	password := DeleteSpace(c.Query("password"))
 
@@ -134,7 +138,7 @@ func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 
 	user, err := GetUserFromToken(c)
 	if err != nil {
-		g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+		g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 		return
 	}
 
@@ -164,7 +168,7 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 		zoneName = AddDotAtLast(zoneName)
 		user, err := GetUserFromToken(c)
 		if err != nil {
-			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 			return
 		}
 
@@ -223,7 +227,7 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 		zoneName = AddDotAtLast(zoneName)
 		user, err := GetUserFromToken(c)
 		if err != nil {
-			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL,nil)
+			g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 			return
 		}
 		// 判断是否存在该域名
@@ -561,7 +565,7 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 
 // get user
 func (lkvs *LKVS) apiGetUsers(c *gin.Context) {
-	g := Gin{C:c}
+	g := Gin{C: c}
 	user, err := GetUserFromToken(c)
 	if err != nil {
 		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
@@ -578,13 +582,13 @@ func (lkvs *LKVS) apiGetUsers(c *gin.Context) {
 				_data[k] = v
 			}
 		}
-		g.Response(http.StatusOK, SUCCESS,_data)
+		g.Response(http.StatusOK, SUCCESS, _data)
 	}
 }
 
 // edit user
 func (lkvs *LKVS) apiEditUser(c *gin.Context) {
-	g := Gin{C:c}
+	g := Gin{C: c}
 	userFromToken, err := GetUserFromToken(c)
 	if err != nil {
 		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
@@ -610,7 +614,7 @@ func (lkvs *LKVS) apiEditUser(c *gin.Context) {
 			NewPW string `valid:"Required; MaxSize(50)"`
 		}
 
-		pc := pwCheck{OldPW:oldPW, NewPW:newPW}
+		pc := pwCheck{OldPW: oldPW, NewPW: newPW}
 		valid := validation.Validation{}
 		ok, err := valid.Valid(pc)
 		if err != nil {
@@ -627,9 +631,9 @@ func (lkvs *LKVS) apiEditUser(c *gin.Context) {
 					g.Response(http.StatusOK, ERROR_EDIT_USER_FAIL, nil)
 					return
 				}
-				g.Response(http.StatusOK, SUCCESS,nil)
+				g.Response(http.StatusOK, SUCCESS, nil)
 			} else {
-				g.Response(http.StatusOK,ERROR_OLD_PASSWORD_WRONG,nil)
+				g.Response(http.StatusOK, ERROR_OLD_PASSWORD_WRONG, nil)
 				return
 			}
 		} else {
@@ -649,7 +653,7 @@ func (lkvs *LKVS) apiEditUser(c *gin.Context) {
 
 // delete user
 func (lkvs *LKVS) apiDeleteUser(c *gin.Context) {
-	g := Gin{C:c}
+	g := Gin{C: c}
 	userFromToken, err := GetUserFromToken(c)
 	if err != nil {
 		g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
@@ -659,17 +663,17 @@ func (lkvs *LKVS) apiDeleteUser(c *gin.Context) {
 	if userFromToken == "admin" {
 		user := DeleteSpace(c.Query("user"))
 		if user == "admin" {
-			g.Response(http.StatusOK, ERROR_AUTH_ADMIN_CAN_NOT_DELETE,nil)
+			g.Response(http.StatusOK, ERROR_AUTH_ADMIN_CAN_NOT_DELETE, nil)
 			return
 		}
 		_, isExist := lkvs.UserIsExist(user)
 		if isExist {
 			err := lkvs.DeleteUserInDB(user)
 			if err != nil {
-				g.Response(http.StatusOK, ERROR_DELETE_USER_FAIL,nil)
+				g.Response(http.StatusOK, ERROR_DELETE_USER_FAIL, nil)
 				return
 			}
-			g.Response(http.StatusOK,SUCCESS,nil)
+			g.Response(http.StatusOK, SUCCESS, nil)
 		} else {
 			g.Response(http.StatusOK, ERROR_NOT_EXIST_USER, nil)
 			return

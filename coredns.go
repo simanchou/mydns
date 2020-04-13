@@ -5,14 +5,14 @@ package main
 
 import (
 	"github.com/coredns/coredns/coremain"
-	"github.com/coredns/coredns/plugin/lkvs"
+	//"github.com/coredns/coredns/plugin/lkvs"
 	// Plug in CoreDNS
 	_ "github.com/coredns/coredns/core/plugin"
 )
 
 func main() {
 
-	go lkvs.RLKVS.APIStart()
+	//go lkvs.RLKVS.APIStart()
 
 	coremain.Run()
 }

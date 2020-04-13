@@ -12,13 +12,25 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
-var RLKVS = &LKVS{ZonesWithRecords:make(map[string]Zone)}
+var RLKVS = &LKVS{ZonesWithRecords: make(map[string]Zone)}
 
 func init() {
-	var err error
+	caddy.RegisterPlugin("lkvs", caddy.Plugin{
+		ServerType: "dns",
+		Action:     setup,
+	})
+}
+
+func setup(c *caddy.Controller) error {
+	err := lkvsParse(c)
+	if err != nil {
+		return err
+	}
+
 	if RLKVS.DBFile == "" {
 		absDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 		if err != nil {
@@ -33,7 +45,7 @@ func init() {
 	RLKVS.DB, err = bolt.Open(
 		RLKVS.DBFile,
 		0600,
-		&bolt.Options{Timeout:time.Duration(RLKVS.DBReadTimeout)*time.Second})
+		&bolt.Options{Timeout: time.Duration(RLKVS.DBReadTimeout) * time.Second})
 	log.Println("begin to open db file...")
 	if err != nil {
 		log.Fatalln("open db fail")
@@ -70,19 +82,10 @@ func init() {
 	RLKVS.LoadZones()
 	RLKVS.InitRouter()
 
-	caddy.RegisterPlugin("lkvs", caddy.Plugin{
-		ServerType: "dns",
-		Action:     setup,
-	})
+	go RLKVS.APIStart()
 
-	fmt.Printf("%#v\n",RLKVS)
-}
+	fmt.Printf("%#v\n", RLKVS)
 
-func setup(c *caddy.Controller) error {
-	err := lkvsParse(c)
-	if err != nil {
-		return err
-	}
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		RLKVS.Next = next
 		return RLKVS
@@ -95,7 +98,7 @@ func lkvsParse(c *caddy.Controller) (err error) {
 		if c.NextBlock() {
 			for {
 				switch c.Val() {
-				case "lkvs_db_file":
+				case "db_file":
 					if !c.NextArg() {
 						return c.ArgErr()
 					}
@@ -104,10 +107,20 @@ func lkvsParse(c *caddy.Controller) (err error) {
 					if !c.NextArg() {
 						return c.ArgErr()
 					}
-					RLKVS.APIPort,err = strconv.Atoi(c.Val())
-					if err !=nil {
+					RLKVS.APIPort, err = strconv.Atoi(c.Val())
+					if err != nil {
 						RLKVS.APIPort = 5500
 					}
+				case "master":
+					if !c.NextArg() {
+						return c.ArgErr()
+					}
+					RLKVS.Master = c.Val()
+				case "slave":
+					if !c.NextArg() {
+						return c.ArgErr()
+					}
+					RLKVS.Slave = strings.Split(c.Val(), ",")
 				case "timeout":
 					if !c.NextArg() {
 						return c.ArgErr()
@@ -121,7 +134,7 @@ func lkvsParse(c *caddy.Controller) (err error) {
 						return c.Errf("unknown property '%s'", c.Val())
 					}
 				}
-				if !c.Next(){
+				if !c.Next() {
 					break
 				}
 			}

@@ -55,7 +55,6 @@ func redisParse(c *caddy.Controller) (*Redis, error) {
 					}
 					redis.redisPassword = c.Val()
 				case "prefix":
-					fmt.Println("redis_keyPrefix: ", redis.keyPrefix)
 					if !c.NextArg() {
 						return &Redis{}, c.ArgErr()
 					}
