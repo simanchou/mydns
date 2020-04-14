@@ -26,18 +26,18 @@ const (
 
 // LKVS local key-value storage
 type LKVS struct {
-	Next             plugin.Handler
-	DB               *bolt.DB
-	DBFile           string
-	DBReadTimeout    int
-	APIEngine        *gin.Engine
-	APIPort          int
-	TTL              uint32
-	Master           string
-	Slave            []string
-	ZonesName        []string
-	ZonesWithRecords map[string]Zone
-	LastZoneUpdate   time.Time
+	Next          plugin.Handler
+	DB            *bolt.DB
+	DBFile        string
+	DBReadTimeout int
+	APIEngine     *gin.Engine
+	APIPort       int
+	TTL           uint32
+	Master        string
+	Slave         []string
+	//ZonesName        []string
+	//ZonesWithRecords map[string]Zone
+	LastZoneUpdate time.Time
 }
 
 // User user struct
@@ -668,6 +668,7 @@ func (lkvs *LKVS) serial() uint32 {
 }
 
 // LoadZones load all zones from db
+/*
 func (lkvs *LKVS) LoadZones() {
 	err := lkvs.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BucketNameForDomain))
@@ -689,6 +690,64 @@ func (lkvs *LKVS) LoadZones() {
 	if err != nil {
 		log.Println("load zones from db fail: ", err)
 	}
+}
+*/
+
+func (lkvs *LKVS) GetAllZones() (zones map[string]*Zone, err error) {
+	zones = make(map[string]*Zone)
+	err = lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForDomain))
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			_z := &Zone{}
+			err := json.Unmarshal(v, &_z)
+			if err != nil {
+				fmt.Println("decode fail, error: ", err)
+				return err
+			}
+			zones[_z.Zone] = _z
+		}
+		return nil
+	})
+	return
+}
+
+func (lkvs *LKVS) GetALLZoneName() (zoneNames []string, err error) {
+	err = lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForDomain))
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			_z := Zone{}
+			err := json.Unmarshal(v, &_z)
+			if err != nil {
+				fmt.Println("decode fail, error: ", err)
+				return err
+			}
+			zoneNames = append(zoneNames, _z.Zone)
+		}
+		return nil
+	})
+	return
+}
+
+func (lkvs *LKVS) ZoneIsExist(zoneName string) (*Zone, bool, error) {
+	z := &Zone{}
+	ok := true
+	err := lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForDomain))
+		v := b.Get([]byte(zoneName))
+		if v == nil {
+			ok = false
+		} else {
+			err := json.Unmarshal(v, &z)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return z, ok, err
 }
 
 /*
@@ -744,7 +803,7 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 }
 
 // A query of type A
-func (lkvs *LKVS) A(name string, z Zone) (isCNAME bool, CNAMEHost string, answers, extras []dns.RR) {
+func (lkvs *LKVS) A(name string, z *Zone) (isCNAME bool, CNAMEHost string, answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 
 	isWildcard := true
@@ -794,7 +853,7 @@ func (lkvs *LKVS) A(name string, z Zone) (isCNAME bool, CNAMEHost string, answer
 }
 
 // A query of type AAAA
-func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) AAAA(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 
 	isWildcard := true
@@ -822,7 +881,7 @@ func (lkvs *LKVS) AAAA(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type TXT
-func (lkvs *LKVS) TXT(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) TXT(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "TXT" && _r.SubDomain == subDomain {
@@ -839,7 +898,7 @@ func (lkvs *LKVS) TXT(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type CNAME
-func (lkvs *LKVS) CNAME(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) CNAME(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
@@ -856,7 +915,7 @@ func (lkvs *LKVS) CNAME(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type MX
-func (lkvs *LKVS) MX(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) MX(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "MX" && _r.SubDomain == subDomain {
@@ -874,7 +933,7 @@ func (lkvs *LKVS) MX(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type SRV
-func (lkvs *LKVS) SRV(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) SRV(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "SRV" && _r.SubDomain == subDomain {
@@ -894,7 +953,7 @@ func (lkvs *LKVS) SRV(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type CAA
-func (lkvs *LKVS) CAA(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) CAA(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "CAA" && _r.SubDomain == subDomain {
@@ -912,7 +971,7 @@ func (lkvs *LKVS) CAA(name string, z Zone) (answers, extras []dns.RR) {
 	return
 }
 
-func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) SOA(name string, z *Zone) (answers, extras []dns.RR) {
 	r := new(dns.SOA)
 	if z.SOA.Ns == "" {
 		r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSOA,
@@ -939,7 +998,7 @@ func (lkvs *LKVS) SOA(name string, z Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type NS
-func (lkvs *LKVS) NS(name string, z Zone) (answers, extras []dns.RR) {
+func (lkvs *LKVS) NS(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
 		if _r.Type == "NS" && _r.SubDomain == subDomain {

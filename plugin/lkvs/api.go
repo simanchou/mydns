@@ -134,7 +134,11 @@ func (lkvs *LKVS) GetAuth(c *gin.Context) {
 // get all zones
 func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 	g := Gin{C: c}
-	lkvs.LoadZones()
+	allZones, err := lkvs.GetAllZones()
+	if err != nil {
+		g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+		return
+	}
 
 	user, err := GetUserFromToken(c)
 	if err != nil {
@@ -142,11 +146,11 @@ func (lkvs *LKVS) apiGetZones(c *gin.Context) {
 		return
 	}
 
-	data := make(map[string]Zone)
+	data := make(map[string]*Zone)
 	if user == "admin" {
-		data = lkvs.ZonesWithRecords
+		data = allZones
 	} else {
-		for k, v := range lkvs.ZonesWithRecords {
+		for k, v := range allZones {
 			if v.User == user {
 				data[k] = v
 			}
@@ -172,9 +176,11 @@ func (lkvs *LKVS) apiAddZone(c *gin.Context) {
 			return
 		}
 
-		lkvs.LoadZones()
-
-		if _, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if _, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			data := validation.Error{
 				Message: GetCodeMsg(ERROR_EXIST_ZONE),
 				Key:     zoneName,
@@ -223,6 +229,7 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 
+	userRecord := 0
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
 		user, err := GetUserFromToken(c)
@@ -231,22 +238,20 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 			return
 		}
 		// 判断是否存在该域名
-		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if _z, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			// 判断域名是否属于该用户
 			if _z.User == user || user == "admin" {
 				// 判断域名的记录列表是否为空，不为空的话则不允许删除域名
-				userRecord := 0
 				for _, r := range _z.Records {
 					if r.Type != "NS" {
 						userRecord += 1
 					}
 				}
-				if userRecord == 0 {
-					delete(lkvs.ZonesWithRecords, zoneName)
-				} else {
-					g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
-					return
-				}
+
 			} else {
 				g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 				return
@@ -262,11 +267,17 @@ func (lkvs *LKVS) apiDeleteZone(c *gin.Context) {
 		}
 	}
 
-	err := lkvs.DeleteZoneInDB(zoneName)
-	if err != nil {
-		g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
+	if userRecord == 0 {
+		err := lkvs.DeleteZoneInDB(zoneName)
+		if err != nil {
+			g.Response(http.StatusInternalServerError, ERROR_DELETE_ZONE_FAIL, nil)
+			return
+		}
+	} else {
+		g.Response(http.StatusOK, ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL, nil)
 		return
 	}
+
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
@@ -278,7 +289,6 @@ func (lkvs *LKVS) apiGetRecords(c *gin.Context) {
 	valid := validation.Validation{}
 	valid.Required(zoneName, "domain").Message("域名不能为空")
 	if !valid.HasErrors() {
-		lkvs.LoadZones()
 
 		user, err := GetUserFromToken(c)
 		if err != nil {
@@ -286,7 +296,11 @@ func (lkvs *LKVS) apiGetRecords(c *gin.Context) {
 			return
 		}
 
-		if data, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if data, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			if data.User == user || user == "admin" {
 				g.Response(http.StatusOK, SUCCESS, data)
 			} else {
@@ -318,18 +332,20 @@ func (lkvs *LKVS) apiAddRecord(c *gin.Context) {
 
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
-		lkvs.LoadZones()
-
 		user, err := GetUserFromToken(c)
 		if err != nil {
 			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 			return
 		}
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if _z, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			if _z.User == user || user == "admin" {
 				var z *Zone
-				z = &_z
+				z = _z
 				switch strings.ToUpper(rType) {
 				case "A":
 					code, err := AddARecordToZone(z, ttl, c)
@@ -413,18 +429,20 @@ func (lkvs *LKVS) apiEditRecord(c *gin.Context) {
 
 	if !valid.HasErrors() {
 		zoneName = AddDotAtLast(zoneName)
-		lkvs.LoadZones()
-
 		user, err := GetUserFromToken(c)
 		if err != nil {
 			g.Response(http.StatusUnauthorized, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
 			return
 		}
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if _z, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			if _z.User == user || user == "admin" {
 				var z *Zone
-				z = &_z
+				z = _z
 				if r, ok := z.Records[id]; ok {
 					switch r.Type {
 					case "A":
@@ -527,9 +545,13 @@ func (lkvs *LKVS) apiDeleteRecord(c *gin.Context) {
 			return
 		}
 
-		if _z, ok := lkvs.ZonesWithRecords[zoneName]; ok {
+		if _z, ok, err := lkvs.ZoneIsExist(zoneName); ok {
+			if err != nil {
+				g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+				return
+			}
 			if _z.User == user || user == "admin" {
-				z = &_z
+				z = _z
 				if r, ok := z.Records[id]; ok {
 					if r.Type != "NS" {
 						delete(z.Records, id)

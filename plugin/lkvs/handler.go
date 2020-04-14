@@ -19,20 +19,27 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	qtype := state.Type()
 
 	//lkvs.LoadZones()
-
+	zoneNames, err := lkvs.GetALLZoneName()
+	if err != nil {
+		return dns.RcodeBadName, err
+	}
 	fmt.Println("qname in lkvs: ", qname)
 	fmt.Println("qtype in lkvs: ", qtype)
-	fmt.Println("zonsName in lkvs:", lkvs.ZonesName)
+	fmt.Println("zonsName in lkvs:", zoneNames)
 
-	zoneName := plugin.Zones(lkvs.ZonesName).Matches(qname)
+	zoneName := plugin.Zones(zoneNames).Matches(qname)
 	fmt.Println("zone in lkvs: ", zoneName)
 	if zoneName == "" {
 		fmt.Println("zone in lkvs is nil...")
 		return plugin.NextOrFailure(qname, lkvs.Next, ctx, w, r)
 	}
 
+	zones, err := lkvs.GetAllZones()
+	if err != nil {
+		return dns.RcodeBadName, err
+	}
 
-	zone := lkvs.ZonesWithRecords[zoneName]
+	zone := zones[zoneName]
 	//subDomain := FindSubDomain(qname, zoneName)
 
 	answers := make([]dns.RR, 0, 10)
@@ -41,18 +48,18 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	switch qtype {
 	case "A":
 		var (
-			isCNAME bool
+			isCNAME   bool
 			CNAMEHost string
 		)
 		isCNAME, CNAMEHost, answers, extras = lkvs.A(qname, zone)
 		if isCNAME {
-			zoneNameInCNAME := plugin.Zones(lkvs.ZonesName).Matches(CNAMEHost)
+			zoneNameInCNAME := plugin.Zones(zoneNames).Matches(CNAMEHost)
 			if zoneNameInCNAME == "" {
 				answers1, extras1 := q(CNAMEHost, "", "A", "IN")
 				answers = append(answers, answers1...)
 				extras = append(extras, extras1...)
 			} else {
-				zoneInCNAME := lkvs.ZonesWithRecords[zoneNameInCNAME]
+				zoneInCNAME := zones[zoneNameInCNAME]
 				_, _, answers2, extras2 := lkvs.A(CNAMEHost, zoneInCNAME)
 				answers = append(answers, answers2...)
 				extras = append(extras, extras2...)

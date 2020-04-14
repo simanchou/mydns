@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var RLKVS = &LKVS{ZonesWithRecords: make(map[string]Zone)}
+var RLKVS = &LKVS{}
 
 func init() {
 	caddy.RegisterPlugin("lkvs", caddy.Plugin{
@@ -79,7 +79,6 @@ func setup(c *caddy.Controller) error {
 	}
 
 	RLKVS.TTL = 600
-	RLKVS.LoadZones()
 	RLKVS.InitRouter()
 
 	go RLKVS.APIStart()
