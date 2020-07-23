@@ -83,6 +83,22 @@ func setup(c *caddy.Controller) error {
 
 	go RLKVS.APIStart()
 
+	if RLKVS.Master != "" {
+		go func() {
+			for {
+				log.Printf("begin to rsync from master %q\n", RLKVS.Master)
+				sc, err := RLKVS.getRsync()
+				if err != nil {
+					log.Printf("rsync from master fail, error: %s\n", err)
+				} else {
+					log.Printf("rsync from master %q successful, zone total: %d\n", RLKVS.Master, sc)
+				}
+				log.Printf("next rsync after 60 seconds")
+				time.Sleep(60 * time.Second)
+			}
+		}()
+	}
+
 	fmt.Printf("%#v\n", RLKVS)
 
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {

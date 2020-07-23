@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/unknwon/com"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -39,7 +40,8 @@ func (lkvs *LKVS) InitRouter() {
 
 	gin.SetMode("debug")
 	engine.POST("/register", lkvs.register)
-	engine.GET("/auth", lkvs.GetAuth)
+	engine.GET("/auth", lkvs.getAuth)
+	engine.GET("/rsync", lkvs.rsync)
 	api := engine.Group("/api")
 	api.Use(JWT())
 	{
@@ -91,8 +93,8 @@ func (lkvs *LKVS) register(c *gin.Context) {
 	g.Response(http.StatusOK, SUCCESS, nil)
 }
 
-//GetAuth
-func (lkvs *LKVS) GetAuth(c *gin.Context) {
+//getAuth
+func (lkvs *LKVS) getAuth(c *gin.Context) {
 	g := Gin{C: c}
 	username := DeleteSpace(c.Query("username"))
 	password := DeleteSpace(c.Query("password"))
@@ -704,4 +706,45 @@ func (lkvs *LKVS) apiDeleteUser(c *gin.Context) {
 	} else {
 		g.Response(http.StatusOK, ERROR_AUTH_ALLOW_ADMIN_ONLY, nil)
 	}
+}
+
+// accept slave's rsync request
+func (lkvs *LKVS) rsync(c *gin.Context) {
+	g := Gin{C: c}
+
+	slaveIP, _, err := net.SplitHostPort(strings.TrimSpace(c.Request.RemoteAddr))
+	if err != nil {
+		g.Response(http.StatusOK, ERROR_GET_SLAVE_IP_FAIL, nil)
+		return
+	}
+
+	if !lkvs.slaveIsAllow(slaveIP) {
+		g.Response(http.StatusForbidden, ERROR_SLAVE_IS_NOT_ALLOW, nil)
+		return
+	}
+
+	zones, err := lkvs.GetAllZones()
+	if err != nil {
+		g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
+		return
+	}
+
+	g.Response(http.StatusOK, SUCCESS, zones)
+
+}
+
+func (lkvs *LKVS) slaveIsAllow(ip string) (ok bool) {
+	allow := 0
+	for _, i := range lkvs.Slave {
+		if i == ip {
+			allow++
+			break
+		}
+	}
+	if allow == 1 {
+		ok = true
+	} else {
+		ok = false
+	}
+	return
 }

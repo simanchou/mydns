@@ -7,8 +7,10 @@ import (
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/unknwon/com"
+	"io/ioutil"
 	"log"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -800,6 +802,74 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 		return nil
 	})
 	return err
+}
+
+func (lkvs *LKVS) getRsync() (sc int, err error) {
+	master := fmt.Sprintf("http://%s/rsync", lkvs.Master)
+	httpClient := &http.Client{}
+	req, err := http.NewRequest("GET", master, nil)
+	if err != nil {
+		return sc, err
+	}
+	res, err := httpClient.Do(req)
+	if err != nil {
+		return sc, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 403 {
+		return sc, fmt.Errorf("forbidden by master, self ip must be in \"slave\" config of the master")
+	}
+
+	if res.StatusCode != 200 {
+		return sc, fmt.Errorf("http code from master is %d", res.StatusCode)
+	}
+
+	resBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return sc, err
+	}
+
+	type respFromMaster struct {
+		Code int              `json:"code"`
+		Msg  string           `json:"msg"`
+		Data map[string]*Zone `json:"data"`
+	}
+
+	rfm := &respFromMaster{Data: make(map[string]*Zone)}
+	err = json.Unmarshal(resBody, &rfm)
+	if err != nil {
+		return sc, err
+	}
+
+	// delete zone which not in master
+	oldzones, err := lkvs.GetAllZones()
+	if len(oldzones) > 0 {
+		if len(rfm.Data) > 0 {
+			for on := range oldzones {
+				if _, ok := rfm.Data[on]; !ok {
+					err = lkvs.DeleteZoneInDB(on)
+					if err != nil {
+						return sc, err
+					}
+				}
+			}
+		}
+	}
+
+	// save zone from master
+	if len(rfm.Data) > 0 {
+		for _, zone := range rfm.Data {
+			err = lkvs.Save(BucketNameForDomain, zone)
+			if err != nil {
+				return sc, err
+			} else {
+				sc++
+			}
+		}
+	}
+
+	return sc, nil
 }
 
 // A query of type A

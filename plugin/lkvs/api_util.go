@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	SUCCESS             = 200
-	ERROR               = 500
-	INVALID_RECORD_TYPE = 300
-	INVALID_PARAMS      = 400
+	SUCCESS                  = 200
+	ERROR                    = 500
+	INVALID_RECORD_TYPE      = 300
+	INVALID_PARAMS           = 400
 	ERROR_REQUIRE_CHECK_FAIL = 600
 
 	ERROR_EXIST_ZONE                              = 10001
@@ -30,15 +30,15 @@ const (
 	ERROR_EXPORT_ZONE_FAIL                        = 10010
 	ERROR_IMPORT_ZONE_FAIL                        = 10011
 
-	ERROR_EXIST_RECORD       = 10021
-	ERROR_EXIST_RECORD_FAIL  = 10022
-	ERROR_NOT_EXIST_RECORD   = 10023
-	ERROR_ADD_RECORD_FAIL    = 10024
-	ERROR_DELETE_RECORD_FAIL = 10025
-	ERROR_EDIT_RECORD_FAIL   = 10026
-	ERROR_COUNT_RECORD_FAIL  = 10027
-	ERROR_GET_RECORDS_FAIL   = 10028
-	ERROR_GET_RECORD_FAIL    = 10029
+	ERROR_EXIST_RECORD             = 10021
+	ERROR_EXIST_RECORD_FAIL        = 10022
+	ERROR_NOT_EXIST_RECORD         = 10023
+	ERROR_ADD_RECORD_FAIL          = 10024
+	ERROR_DELETE_RECORD_FAIL       = 10025
+	ERROR_EDIT_RECORD_FAIL         = 10026
+	ERROR_COUNT_RECORD_FAIL        = 10027
+	ERROR_GET_RECORDS_FAIL         = 10028
+	ERROR_GET_RECORD_FAIL          = 10029
 	ERROR_CAN_NOT_DELETE_NS_RECORD = 10030
 
 	ERROR_ADD_USER_FAIL      = 20001
@@ -46,60 +46,75 @@ const (
 	ERROR_NOT_EXIST_USER     = 20003
 	ERROR_EDIT_USER_FAIL     = 20004
 	ERROR_OLD_PASSWORD_WRONG = 20005
-	ERROR_DELETE_USER_FAIL = 20006
+	ERROR_DELETE_USER_FAIL   = 20006
 
-	ERROR_AUTH_MISS_TOKEN = 30001
-	ERROR_AUTH_CHECK_TOKEN_FAIL    = 30002
-	ERROR_AUTH_CHECK_TOKEN_TIMEOUT = 30003
-	ERROR_AUTH_TOKEN               = 30004
-	ERROR_AUTH                     = 30005
-	ERROR_AUTH_WRONG_PASSWORD = 30006
-	ERROR_AUTH_ALLOW_ADMIN_ONLY = 30007
+	ERROR_AUTH_MISS_TOKEN           = 30001
+	ERROR_AUTH_CHECK_TOKEN_FAIL     = 30002
+	ERROR_AUTH_CHECK_TOKEN_TIMEOUT  = 30003
+	ERROR_AUTH_TOKEN                = 30004
+	ERROR_AUTH                      = 30005
+	ERROR_AUTH_WRONG_PASSWORD       = 30006
+	ERROR_AUTH_ALLOW_ADMIN_ONLY     = 30007
 	ERROR_AUTH_ADMIN_CAN_NOT_DELETE = 30008
+
+	ERROR_GET_SLAVE_IP_FAIL          = 40001
+	ERROR_SLAVE_IS_NOT_ALLOW         = 40002
+	ERROR_GENERATE_HTTP_REQ_FAIL     = 40003
+	ERROR_CONNECT_TO_MASTER_FAIL     = 40004
+	ERROR_MASTER_RESPONSE_NOT_OK     = 40005
+	ERROR_MASTER_RESPONSE_READ_FAIL  = 40006
+	ERROR_MASTER_RESPONSE_PARSE_FAIL = 40007
 )
 
 // MsgFlags flags of msg
 var CodeMsgFlags = map[int]string{
-	SUCCESS:                "ok",
-	ERROR:                  "fail",
-	INVALID_RECORD_TYPE:    "错误的记录类型",
-	INVALID_PARAMS:         "请求参数错误",
-	ERROR_REQUIRE_CHECK_FAIL:"条件限制检验失败",
-	ERROR_EXIST_ZONE:       "已存在该域名",
-	ERROR_EXIST_ZONE_FAIL:  "获取已存在域名失败",
-	ERROR_NOT_EXIST_ZONE:   "该域名不存在",
-	ERROR_GET_ZONES_FAIL:   "获取所有域名失败",
-	ERROR_COUNT_ZONE_FAIL:  "统计域名失败",
-	ERROR_ADD_ZONE_FAIL:    "新增域名失败",
-	ERROR_EDIT_ZONE_FAIL:   "修改域名失败",
-	ERROR_DELETE_ZONE_FAIL: "删除域名失败",
+	SUCCESS:                  "ok",
+	ERROR:                    "fail",
+	INVALID_RECORD_TYPE:      "错误的记录类型",
+	INVALID_PARAMS:           "请求参数错误",
+	ERROR_REQUIRE_CHECK_FAIL: "条件限制检验失败",
+	ERROR_EXIST_ZONE:         "已存在该域名",
+	ERROR_EXIST_ZONE_FAIL:    "获取已存在域名失败",
+	ERROR_NOT_EXIST_ZONE:     "该域名不存在",
+	ERROR_GET_ZONES_FAIL:     "获取所有域名失败",
+	ERROR_COUNT_ZONE_FAIL:    "统计域名失败",
+	ERROR_ADD_ZONE_FAIL:      "新增域名失败",
+	ERROR_EDIT_ZONE_FAIL:     "修改域名失败",
+	ERROR_DELETE_ZONE_FAIL:   "删除域名失败",
 	ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL: "还有记录时不能删除域名",
 	ERROR_EXPORT_ZONE_FAIL:                        "导出域名失败",
 	ERROR_IMPORT_ZONE_FAIL:                        "导入域名失败",
 	ERROR_EXIST_RECORD:                            "该记录已存在",
 	ERROR_NOT_EXIST_RECORD:                        "该记录不存在",
 	ERROR_ADD_RECORD_FAIL:                         "新增记录失败",
-	ERROR_DELETE_RECORD_FAIL:       "删除记录失败",
-	ERROR_EXIST_RECORD_FAIL:        "检查已存在记录失败",
-	ERROR_EDIT_RECORD_FAIL:         "修改记录失败",
-	ERROR_COUNT_RECORD_FAIL:        "统计记录失败",
-	ERROR_GET_RECORDS_FAIL:         "获取多个记录失败",
-	ERROR_GET_RECORD_FAIL:          "获取单个记录失败",
-	ERROR_CAN_NOT_DELETE_NS_RECORD:"不能删除类型为NS的记录",
-	ERROR_ADD_USER_FAIL:            "注册用户失败",
-	ERROR_EXIST_USER:               "用户已存在",
-	ERROR_NOT_EXIST_USER:           "用户不存在",
-	ERROR_EDIT_USER_FAIL:           "编辑用户失败",
-	ERROR_OLD_PASSWORD_WRONG:       "旧密码错误",
-	ERROR_DELETE_USER_FAIL:"删除用户失败",
-	ERROR_AUTH_MISS_TOKEN:          "缺失token,访问此url需要先认证授权",
-	ERROR_AUTH_CHECK_TOKEN_FAIL:    "Token鉴权失败",
-	ERROR_AUTH_CHECK_TOKEN_TIMEOUT: "Token已超时",
-	ERROR_AUTH_TOKEN:               "Token生成失败",
-	ERROR_AUTH:                     "Token错误",
-	ERROR_AUTH_WRONG_PASSWORD: "密码错误",
-	ERROR_AUTH_ALLOW_ADMIN_ONLY:"仅允许超管执行该操作",
-	ERROR_AUTH_ADMIN_CAN_NOT_DELETE:"超管不允许被删除",
+	ERROR_DELETE_RECORD_FAIL:                      "删除记录失败",
+	ERROR_EXIST_RECORD_FAIL:                       "检查已存在记录失败",
+	ERROR_EDIT_RECORD_FAIL:                        "修改记录失败",
+	ERROR_COUNT_RECORD_FAIL:                       "统计记录失败",
+	ERROR_GET_RECORDS_FAIL:                        "获取多个记录失败",
+	ERROR_GET_RECORD_FAIL:                         "获取单个记录失败",
+	ERROR_CAN_NOT_DELETE_NS_RECORD:                "不能删除类型为NS的记录",
+	ERROR_ADD_USER_FAIL:                           "注册用户失败",
+	ERROR_EXIST_USER:                              "用户已存在",
+	ERROR_NOT_EXIST_USER:                          "用户不存在",
+	ERROR_EDIT_USER_FAIL:                          "编辑用户失败",
+	ERROR_OLD_PASSWORD_WRONG:                      "旧密码错误",
+	ERROR_DELETE_USER_FAIL:                        "删除用户失败",
+	ERROR_AUTH_MISS_TOKEN:                         "缺失token,访问此url需要先认证授权",
+	ERROR_AUTH_CHECK_TOKEN_FAIL:                   "Token鉴权失败",
+	ERROR_AUTH_CHECK_TOKEN_TIMEOUT:                "Token已超时",
+	ERROR_AUTH_TOKEN:                              "Token生成失败",
+	ERROR_AUTH:                                    "Token错误",
+	ERROR_AUTH_WRONG_PASSWORD:                     "密码错误",
+	ERROR_AUTH_ALLOW_ADMIN_ONLY:                   "仅允许超管执行该操作",
+	ERROR_AUTH_ADMIN_CAN_NOT_DELETE:               "超管不允许被删除",
+	ERROR_GET_SLAVE_IP_FAIL:                       "获取从服务器IP失败",
+	ERROR_SLAVE_IS_NOT_ALLOW:                      "从服务器IP不在白名单中",
+	ERROR_GENERATE_HTTP_REQ_FAIL:                  "生成获取同步的http请求失败",
+	ERROR_CONNECT_TO_MASTER_FAIL:                  "连接主服务器失败",
+	ERROR_MASTER_RESPONSE_NOT_OK:                  "主服务器返回的http状态码不是200",
+	ERROR_MASTER_RESPONSE_READ_FAIL:               "主服务器的返回内容读取以失败",
+	ERROR_MASTER_RESPONSE_PARSE_FAIL:              "主服务器的返回内容解析失败",
 }
 
 // GetMsg get error msg of error code
@@ -137,6 +152,7 @@ func GenerateRecordID() string {
 
 // EncryptionPassword encryption password
 var salt = []byte{5, 0, 7, 6, 9, 3, 9, 4}
+
 func EncryptionPassword(pw string) (ep string) {
 	dk, _ := scrypt.Key([]byte(pw), salt, 1<<15, 8, 1, 32)
 	return base64.StdEncoding.EncodeToString(dk)
