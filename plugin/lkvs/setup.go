@@ -1,7 +1,6 @@
 package lkvs
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/caddyserver/caddy"
@@ -64,22 +63,25 @@ func setup(c *caddy.Controller) error {
 	}
 	// init db for user
 	err = RLKVS.DB.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(BucketNameForUser))
+		_, err := tx.CreateBucketIfNotExists([]byte(BucketNameForUser))
 		if err != nil {
-			return err
-		}
-
-		u := NewUser("admin", "123456")
-		_, isExist := RLKVS.UserIsExist(u.Username)
-		if !isExist {
-			encode, _ := json.Marshal(u)
-			err = b.Put([]byte(u.Username), encode)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
 		log.Fatalf("init db for user fail, error: %s", err)
+	}
+	// init admin user
+	u := NewUser("admin", "123456")
+	u.Nickname = "超级管理员"
+	u.Role = "administrator"
+	_, isExist := RLKVS.UserIsExist(u.Username)
+	if !isExist {
+		err = RLKVS.Save(BucketNameForUser, u)
+		if err != nil {
+			log.Fatalf("init admin user fail, error: %s", err.Error())
+		}
 	}
 
 	RLKVS.TTL = 600

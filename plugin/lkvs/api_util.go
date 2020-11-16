@@ -8,6 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/scrypt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -148,6 +149,11 @@ func (g *Gin) Response(httpCode, errCode int, data interface{}) {
 func GenerateRecordID() string {
 	u4 := uuid.Must(uuid.NewV4(), nil)
 	return fmt.Sprintf("%s", u4)
+}
+
+func UUIDWithoutHyphen() string {
+	u := uuid.NewV4()
+	return strings.ReplaceAll(u.String(), "-", "")
 }
 
 // EncryptionPassword encryption password

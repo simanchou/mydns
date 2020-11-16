@@ -44,9 +44,16 @@ type LKVS struct {
 
 // User user struct
 type User struct {
-	Username string    `valid:"Required; MaxSize(50)" json:"username"`
-	Password string    `valid:"Required; MaxSize(50)" json:"password,omitempty"`
-	CreateAt time.Time `json:"create_at,omitempty"`
+	ID       string     `json:"id"`
+	Active   bool       `json:"active"`
+	Username string     `valid:"Required; MaxSize(50)" json:"username"`
+	Password string     `valid:"Required; MaxSize(50)" json:"password"`
+	Nickname string     `json:"nickname"`
+	Gender   int8       `json:"gender"`
+	Role     string     `json:"role"`
+	Avatar   string     `json:"avatar"`
+	CreateAt time.Time  `json:"create_at"`
+	UpdateAt *time.Time `json:"update_at"`
 }
 
 // Zone domain zone with records
@@ -164,8 +171,11 @@ type SOARecord struct {
 
 func NewUser(username, password string) *User {
 	return &User{
+		ID:       UUIDWithoutHyphen(),
+		Active:   true,
 		Username: username,
 		Password: EncryptionPassword(password),
+		Gender:   1,
 		CreateAt: time.Now(),
 	}
 }
