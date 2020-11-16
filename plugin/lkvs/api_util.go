@@ -206,7 +206,7 @@ func ParseToken(token string) (*Claims, error) {
 // GetUserFromToken
 func GetUserFromToken(c *gin.Context) (userName string, err error) {
 	var claims *Claims
-	token := c.Query("token")
+	token := c.Request.Header.Get("token")
 	claims, err = ParseToken(token)
 	if err != nil {
 		return "", err
@@ -221,7 +221,7 @@ func JWT() gin.HandlerFunc {
 		var data interface{}
 
 		code = SUCCESS
-		token := c.Query("token")
+		token := c.Request.Header.Get("token")
 		if token == "" {
 			code = ERROR_AUTH_MISS_TOKEN
 		} else {

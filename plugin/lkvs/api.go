@@ -1,10 +1,12 @@
 package lkvs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/astaxie/beego/validation"
 	"github.com/gin-gonic/gin"
 	"github.com/unknwon/com"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -40,7 +42,7 @@ func (lkvs *LKVS) InitRouter() {
 
 	gin.SetMode("debug")
 	engine.POST("/register", lkvs.register)
-	engine.GET("/auth", lkvs.getAuth)
+	engine.POST("/auth", lkvs.getAuth)
 	engine.GET("/rsync", lkvs.rsync)
 	api := engine.Group("/api")
 	api.Use(JWT())
@@ -65,11 +67,23 @@ func (lkvs *LKVS) InitRouter() {
 // register
 func (lkvs *LKVS) register(c *gin.Context) {
 	g := Gin{C: c}
-	username := DeleteSpace(c.Query("username"))
-	password := DeleteSpace(c.Query("password"))
+
+	body, err := ioutil.ReadAll(g.C.Request.Body)
+	if err != nil {
+		log.Println("read body from request fail, ", err.Error())
+		g.Response(http.StatusOK, INVALID_PARAMS, nil)
+		return
+	}
+	_u := &User{}
+	err = json.Unmarshal(body, _u)
+	if err != nil {
+		log.Println("parse json fail, ", err.Error())
+		g.Response(http.StatusOK, INVALID_PARAMS, nil)
+		return
+	}
 
 	valid := validation.Validation{}
-	u := NewUser(username, password)
+	u := NewUser(_u.Username, _u.Password)
 	ok, _ := valid.Valid(u)
 
 	if ok {
@@ -96,38 +110,43 @@ func (lkvs *LKVS) register(c *gin.Context) {
 //getAuth
 func (lkvs *LKVS) getAuth(c *gin.Context) {
 	g := Gin{C: c}
-	username := DeleteSpace(c.Query("username"))
-	password := DeleteSpace(c.Query("password"))
 
-	valid := validation.Validation{}
-	u := NewUser(username, password)
-	ok, err := valid.Valid(u)
+	body, err := ioutil.ReadAll(g.C.Request.Body)
 	if err != nil {
-		g.Response(http.StatusOK, ERROR_AUTH_CHECK_TOKEN_FAIL, nil)
+		log.Println("read body from request fail, ", err.Error())
+		g.Response(http.StatusOK, INVALID_PARAMS, nil)
+		return
+	}
+	_u := &User{}
+	err = json.Unmarshal(body, _u)
+	if err != nil {
+		log.Println("parse json fail, ", err.Error())
+		g.Response(http.StatusOK, INVALID_PARAMS, nil)
 		return
 	}
 
+	u := NewUser(_u.Username, _u.Password)
+
+	log.Printf("%#v\n", u)
 	data := make(map[string]interface{})
 	code := INVALID_PARAMS
 
-	if ok {
-		_, isExist := lkvs.UserIsExist(u.Username)
-		if isExist {
-			isAuth := lkvs.CheckAuth(u)
-			if isAuth {
-				token, err := GenerateToke(u)
-				if err != nil {
-					code = ERROR_AUTH_TOKEN
-				} else {
-					data["token"] = token
-					code = SUCCESS
-				}
+	_, isExist := lkvs.UserIsExist(u.Username)
+	if isExist {
+		isAuth := lkvs.CheckAuth(u)
+		if isAuth {
+			token, err := GenerateToke(u)
+			if err != nil {
+				code = ERROR_AUTH_TOKEN
 			} else {
-				code = ERROR_AUTH_WRONG_PASSWORD
+				data["token"] = token
+				code = SUCCESS
 			}
 		} else {
-			code = ERROR_NOT_EXIST_USER
+			code = ERROR_AUTH_WRONG_PASSWORD
 		}
+	} else {
+		code = ERROR_NOT_EXIST_USER
 	}
 
 	g.Response(http.StatusOK, code, data)
@@ -600,10 +619,10 @@ func (lkvs *LKVS) apiGetUsers(c *gin.Context) {
 	if user == "admin" {
 		g.Response(http.StatusOK, SUCCESS, data)
 	} else {
-		_data := make(map[string]User)
-		for k, v := range data {
-			if v.Username == user {
-				_data[k] = v
+		var _data []*User
+		for _, i := range data {
+			if i.Username == user {
+				_data = append(_data, i)
 			}
 		}
 		g.Response(http.StatusOK, SUCCESS, _data)

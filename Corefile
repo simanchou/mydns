@@ -14,7 +14,7 @@
     slave 192.168.1.2,192.168.1.133
   }
 
-  forward . 114.114.114.114:53
+  forward . 8.8.8.8:53
  # forward . /etc/resolv.conf
   cache 120
   reload 6s

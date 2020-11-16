@@ -46,7 +46,7 @@ type LKVS struct {
 type User struct {
 	Username string    `valid:"Required; MaxSize(50)" json:"username"`
 	Password string    `valid:"Required; MaxSize(50)" json:"password,omitempty"`
-	CreateAt time.Time `json:"create_at"`
+	CreateAt time.Time `json:"create_at,omitempty"`
 }
 
 // Zone domain zone with records
@@ -1122,21 +1122,18 @@ func (lkvs *LKVS) CheckAuth(u *User) bool {
 }
 
 // get all user from db
-func (lkvs *LKVS) GetAllUsers() (users map[string]User) {
-	users = make(map[string]User)
+func (lkvs *LKVS) GetAllUsers() (users []*User) {
 	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BucketNameForUser))
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			_u := User{}
-			err := json.Unmarshal(v, &_u)
+			_u := &User{}
+			err := json.Unmarshal(v, _u)
 			if err != nil {
 				return err
 			}
 
-			// hide password for user query
-			_u.Password = ""
-			users[_u.Username] = _u
+			users = append(users, _u)
 		}
 		return nil
 	})

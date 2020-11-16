@@ -70,9 +70,13 @@ func setup(c *caddy.Controller) error {
 		}
 
 		u := NewUser("admin", "123456")
-		encode, _ := json.Marshal(u)
-		err = b.Put([]byte(u.Username), encode)
-		return err
+		_, isExist := RLKVS.UserIsExist(u.Username)
+		if !isExist {
+			encode, _ := json.Marshal(u)
+			err = b.Put([]byte(u.Username), encode)
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		log.Fatalf("init db for user fail, error: %s", err)
