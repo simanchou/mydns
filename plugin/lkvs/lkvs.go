@@ -50,7 +50,7 @@ type User struct {
 	Password string     `valid:"Required; MaxSize(50)" json:"password"`
 	Nickname string     `json:"nickname"`
 	Gender   int8       `json:"gender"`
-	Role     string     `json:"role"`
+	Roles    []string   `json:"roles"`
 	Avatar   string     `json:"avatar"`
 	CreateAt time.Time  `json:"create_at"`
 	UpdateAt *time.Time `json:"update_at"`
@@ -58,29 +58,22 @@ type User struct {
 
 // Zone domain zone with records
 type Zone struct {
-	Zone    string             `json:"zone,omitempty"`
-	User    string             `json:"user"`
-	SOA     SOARecord          `json:"soa,omitempty"`
-	Records map[string]*Record `json:"records,omitempty"`
+	Zone     string             `json:"zone,omitempty"`
+	User     string             `json:"user"`
+	CreateAt time.Time          `json:"create_at"`
+	UpdateAt *time.Time         `json:"update_at"`
+	SOA      SOARecord          `json:"soa,omitempty"`
+	Records  map[string]*Record `json:"records,omitempty"`
 }
 
 // Record record of domain
 type Record struct {
-	ID         string `json:"id"`
-	SubDomain  string `json:"subdomain"`
-	TTL        uint32 `json:"ttl"`
-	Type       string `json:"type"`
-	IP         net.IP `json:"ip,omitempty"`
-	Text       string `json:"text,omitempty"`
-	Host       string `json:"host,omitempty"`
-	Preference uint16 `json:"preference,omitempty"`
-	Priority   uint16 `json:"priority,omitempty"`
-	Weight     uint16 `json:"weight,omitempty"`
-	Port       uint16 `json:"port,omitempty"`
-	Target     string `json:"target,omitempty"`
-	Flag       uint8  `json:"flag,omitempty"`
-	Tag        string `json:"tag,omitempty"`
-	Value      string `json:"value,omitempty"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Priority uint16 `json:"priority"`
+	TTL      uint32 `json:"ttl"`
 }
 
 // SOARecord type soa record
@@ -172,6 +165,7 @@ type SOARecord struct {
 func NewUser(username, password string) *User {
 	return &User{
 		ID:       UUIDWithoutHyphen(),
+		Avatar:   "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif",
 		Active:   true,
 		Username: username,
 		Password: EncryptionPassword(password),
@@ -189,13 +183,14 @@ func NewZone() *Zone {
 			Expire:  86400,
 			MinTTL:  3600,
 		},
-		Records: make(map[string]*Record),
+		CreateAt: time.Now(),
+		Records:  make(map[string]*Record),
 	}
 }
 
 func NewRecord() *Record {
 	return &Record{
-		ID:  GenerateRecordID(),
+		ID:  UUIDWithoutHyphen(),
 		TTL: defaultTTL,
 	}
 }
@@ -220,18 +215,18 @@ func AddARecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *valid
 	if !valid.HasErrors() {
 		_r := NewRecord()
 		_r.Type = "A"
-		_r.SubDomain = subDomain
+		_r.Name = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.IP = net.ParseIP(host)
+		_r.Value = host
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.IP.String() == _record.IP.String() {
+			if _r.Name == _record.Name && _r.Type == _record.Type && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
 					Key:     subDomain,
 					Name:    subDomain,
-					Value:   _r.IP.String(),
+					Value:   _r.Value,
 				}
 			}
 		}
@@ -258,18 +253,18 @@ func AddAAAARecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *va
 	if !valid.HasErrors() {
 		_r := NewRecord()
 		_r.Type = "AAAA"
-		_r.SubDomain = subDomain
+		_r.Name = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.IP = net.ParseIP(host)
+		_r.Value = host
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.IP.String() == _record.IP.String() {
+			if _r.Name == _record.Name && _r.Type == _record.Type && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
 					Key:     subDomain,
 					Name:    subDomain,
-					Value:   _r.IP.String(),
+					Value:   _r.Value,
 				}
 			}
 		}
@@ -296,18 +291,18 @@ func AddTXTRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *val
 	if !valid.HasErrors() {
 		_r := NewRecord()
 		_r.Type = "TXT"
-		_r.SubDomain = subDomain
+		_r.Name = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Text = DeleteSpace(text)
+		_r.Value = DeleteSpace(text)
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Text == _record.Text {
+			if _r.Name == _record.Name && _r.Type == _record.Type && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
 					Key:     subDomain,
 					Name:    subDomain,
-					Value:   _r.IP.String(),
+					Value:   _r.Value,
 				}
 			}
 		}
@@ -334,18 +329,18 @@ func AddCNAMERecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *v
 	if !valid.HasErrors() {
 		_r := NewRecord()
 		_r.Type = "CNAME"
-		_r.SubDomain = subDomain
+		_r.Name = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Host = AddDotAtLast(host)
+		_r.Value = AddDotAtLast(host)
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Host == _record.Host {
+			if _r.Name == _record.Name && _r.Type == _record.Type && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
 					Key:     subDomain,
 					Name:    subDomain,
-					Value:   _r.IP.String(),
+					Value:   _r.Value,
 				}
 			}
 		}
@@ -374,23 +369,23 @@ func AddMXRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *vali
 	if !valid.HasErrors() {
 		_r := NewRecord()
 		_r.Type = "MX"
-		_r.SubDomain = subDomain
+		_r.Name = subDomain
 		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Host = AddDotAtLast(host)
-		_r.Preference = uint16(com.StrTo(preference).MustInt())
+		_r.Value = AddDotAtLast(host)
+		_r.Priority = uint16(com.StrTo(preference).MustInt())
 
-		if _r.Preference == 0 {
-			_r.Preference = 10
+		if _r.Priority == 0 {
+			_r.Priority = 10
 		}
 
 		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Host == _record.Host {
+			if _r.Name == _record.Name && _r.Type == _record.Type && _r.Value == _record.Value {
 				recordIsExist = true
 				return ERROR_EXIST_RECORD, &validation.Error{
 					Message: GetCodeMsg(ERROR_EXIST_RECORD),
 					Key:     subDomain,
 					Name:    subDomain,
-					Value:   _r.IP.String(),
+					Value:   _r.Value,
 				}
 			}
 		}
@@ -408,96 +403,10 @@ func AddMXRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *vali
 }
 
 // AddSRVRecordToZone add a record of type SRV
-func AddSRVRecordToZone(z *Zone, ttl int, c *gin.Context) (errCode int, err *validation.Error) {
-	subDomain := c.Query("sub")
-	priority := c.Query("priority")
-	weight := c.Query("weight")
-	port := c.Query("port")
-	target := c.Query("target")
-
-	valid := validation.Validation{}
-	valid.Required(subDomain, "sub").Message("子域名不能为空")
-	valid.Required(priority, "priority").Message("优先级不能为空")
-	valid.Required(weight, "weight").Message("权重不能为空")
-	valid.Required(port, "port").Message("服务端口不能为空")
-	valid.Required(target, "target").Message("服务地址不能为空")
-	recordIsExist := false
-	if !valid.HasErrors() {
-		_r := NewRecord()
-		_r.Type = "SRV"
-		_r.SubDomain = subDomain
-		_r.TTL = CheckTTL(uint32(ttl))
-		_r.Target = AddDotAtLast(target)
-		_r.Priority = uint16(com.StrTo(priority).MustInt())
-		_r.Weight = uint16(com.StrTo(weight).MustInt())
-		_r.Port = uint16(com.StrTo(port).MustInt())
-
-		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Target == _record.Target && _r.Port == _record.Port {
-				recordIsExist = true
-				return ERROR_EXIST_RECORD, &validation.Error{
-					Message: GetCodeMsg(ERROR_EXIST_RECORD),
-					Key:     subDomain,
-					Name:    subDomain,
-					Value:   _r.IP.String(),
-				}
-			}
-		}
-
-		if !recordIsExist {
-			z.Records[_r.ID] = _r
-		}
-	} else {
-		for _, err := range valid.Errors {
-			return INVALID_PARAMS, err
-		}
-	}
-	return SUCCESS, nil
-}
+// TODO AddSRVRecordToZone
 
 // AddCAARecordToZone add a record of type CAA
-func AddCAARecordToZone(z *Zone, c *gin.Context) (errCode int, err *validation.Error) {
-	subDomain := c.Query("sub")
-	flag := c.Query("flag")
-	tag := c.Query("tag")
-	value := c.Query("value")
-
-	valid := validation.Validation{}
-	valid.Required(subDomain, "sub").Message("子域名不能为空")
-	valid.Required(flag, "flag").Message("标志位不能为空")
-	valid.Required(tag, "tag").Message("属性标签不能为空")
-	valid.Required(value, "value").Message("属性标签的值不能为空")
-	recordIsExist := false
-	if !valid.HasErrors() {
-		_r := NewRecord()
-		_r.Type = "CAA"
-		_r.SubDomain = subDomain
-		_r.Flag = uint8(com.StrTo(flag).MustInt())
-		_r.Tag = tag
-		_r.Value = value
-
-		for _, _record := range z.Records {
-			if _r.SubDomain == _record.SubDomain && _r.Type == _record.Type && _r.Flag == _record.Flag && _r.Tag == _record.Tag && _r.Value == _record.Value {
-				recordIsExist = true
-				return ERROR_EXIST_RECORD, &validation.Error{
-					Message: GetCodeMsg(ERROR_EXIST_RECORD),
-					Key:     subDomain,
-					Name:    subDomain,
-					Value:   _r.IP.String(),
-				}
-			}
-		}
-
-		if !recordIsExist {
-			z.Records[_r.ID] = _r
-		}
-	} else {
-		for _, err := range valid.Errors {
-			return INVALID_PARAMS, err
-		}
-	}
-	return SUCCESS, nil
-}
+// TODO AddCAARecordToZone
 
 // EditARecord edit a record of type A
 func EditARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
@@ -510,7 +419,7 @@ func EditARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validati
 	}
 
 	if host != "" {
-		r.IP = net.ParseIP(host)
+		r.Value = host
 	}
 	if ttl != "" {
 		r.TTL = uint32(com.StrTo(ttl).MustInt())
@@ -531,7 +440,7 @@ func EditAAAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *valid
 	}
 
 	if host != "" {
-		r.IP = net.ParseIP(host)
+		r.Value = host
 	}
 	if ttl != "" {
 		r.TTL = uint32(com.StrTo(ttl).MustInt())
@@ -552,7 +461,7 @@ func EditTXTRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *valida
 	}
 
 	if text != "" {
-		r.Text = text
+		r.Value = text
 	}
 	if ttl != "" {
 		r.TTL = uint32(com.StrTo(ttl).MustInt())
@@ -573,7 +482,7 @@ func EditCNAMERecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *vali
 	}
 
 	if host != "" {
-		r.Host = AddDotAtLast(host)
+		r.Value = AddDotAtLast(host)
 	}
 	if ttl != "" {
 		r.TTL = uint32(com.StrTo(ttl).MustInt())
@@ -596,76 +505,10 @@ func EditMXRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validat
 	}
 
 	if host != "" {
-		r.Host = AddDotAtLast(host)
+		r.Value = AddDotAtLast(host)
 	}
 	if preference != "" {
-		r.Preference = uint16(com.StrTo(preference).MustInt())
-	}
-	if ttl != "" {
-		r.TTL = uint32(com.StrTo(ttl).MustInt())
-	}
-	z.Records[r.ID] = r
-
-	return SUCCESS, nil
-}
-
-// EditSRVRecord edit a record of type SRV
-func EditSRVRecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
-	target := DeleteSpace(c.Query("target"))
-	port := DeleteSpace(c.Query("port"))
-	priority := DeleteSpace(c.Query("priority"))
-	weight := DeleteSpace(c.Query("weight"))
-	ttl := DeleteSpace(c.Query("ttl"))
-
-	if target == "" && port == "" && priority == "" && weight == "" && ttl == "" {
-		return INVALID_PARAMS,
-			NewValidationError(INVALID_PARAMS, "target + port + priority + weight + ttl",
-				"target + port + priority + weight + ttl",
-				"target,port,priority,weight,ttl不能全为空")
-	}
-
-	if target != "" {
-		r.Target = AddDotAtLast(target)
-	}
-	if port != "" {
-		r.Port = uint16(com.StrTo(port).MustInt())
-	}
-	if priority != "" {
-		r.Priority = uint16(com.StrTo(priority).MustInt())
-	}
-	if weight != "" {
-		r.Weight = uint16(com.StrTo(weight).MustInt())
-	}
-	if ttl != "" {
-		r.TTL = uint32(com.StrTo(ttl).MustInt())
-	}
-	z.Records[r.ID] = r
-
-	return SUCCESS, nil
-}
-
-// EditCAARecord edit a record of type CAA
-func EditCAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *validation.Error) {
-	flag := DeleteSpace(c.Query("flag"))
-	tag := DeleteSpace(c.Query("tag"))
-	value := DeleteSpace(c.Query("value"))
-	ttl := DeleteSpace(c.Query("ttl"))
-
-	if flag == "" && tag == "" && value == "" && ttl == "" {
-		return INVALID_PARAMS,
-			NewValidationError(INVALID_PARAMS, "flag + tag + value + ttl",
-				"flag + tag + value + ttl",
-				"flag,tag,value,ttl不能全为空")
-	}
-
-	if flag != "" {
-		r.Flag = uint8(com.StrTo(flag).MustInt())
-	}
-	if tag != "" {
-		r.Tag = tag
-	}
-	if value != "" {
-		r.Value = value
+		r.Priority = uint16(com.StrTo(preference).MustInt())
 	}
 	if ttl != "" {
 		r.TTL = uint32(com.StrTo(ttl).MustInt())
@@ -678,32 +521,6 @@ func EditCAARecord(z *Zone, r *Record, c *gin.Context) (errCode int, err *valida
 func (lkvs *LKVS) serial() uint32 {
 	return uint32(time.Now().Unix())
 }
-
-// LoadZones load all zones from db
-/*
-func (lkvs *LKVS) LoadZones() {
-	err := lkvs.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BucketNameForDomain))
-		c := b.Cursor()
-		var _zoneName []string
-		for k, v := c.First(); k != nil; k, v = c.Next() {
-			_z := Zone{}
-			err := json.Unmarshal(v, &_z)
-			if err != nil {
-				fmt.Println("decode fail, error: ", err)
-				return err
-			}
-			_zoneName = append(_zoneName, _z.Zone)
-			lkvs.ZonesName = _zoneName
-			lkvs.ZonesWithRecords[_z.Zone] = _z
-		}
-		return nil
-	})
-	if err != nil {
-		log.Println("load zones from db fail: ", err)
-	}
-}
-*/
 
 func (lkvs *LKVS) GetAllZones() (zones map[string]*Zone, err error) {
 	zones = make(map[string]*Zone)
@@ -761,23 +578,6 @@ func (lkvs *LKVS) ZoneIsExist(zoneName string) (*Zone, bool, error) {
 	})
 	return z, ok, err
 }
-
-/*
-// SaveToDB save to db
-func (lkvs *LKVS) SaveToDB(z *Zone) (err error) {
-	err = lkvs.DB.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(BucketNameForDomain))
-		encode, err := json.Marshal(z)
-		if err != nil {
-			log.Println("encode fail, error: ", err)
-			return err
-		}
-		return b.Put([]byte(z.Zone), encode)
-	})
-	return
-}
-
-*/
 
 // Save save to db
 func (lkvs *LKVS) Save(bn string, data interface{}) (err error) {
@@ -890,13 +690,13 @@ func (lkvs *LKVS) A(name string, z *Zone) (isCNAME bool, CNAMEHost string, answe
 	isCNAME = false
 	CNAMEHost = ""
 	for _, _r := range z.Records {
-		if _r.Type == "A" && _r.SubDomain == subDomain {
+		if _r.Type == "A" && _r.Name == subDomain {
 			isWildcard = false
 		}
-		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+		if _r.Type == "CNAME" && _r.Name == subDomain {
 			isWildcard = false
 			isCNAME = true
-			CNAMEHost = _r.Host
+			CNAMEHost = _r.Value
 		}
 	}
 	if isWildcard {
@@ -905,11 +705,11 @@ func (lkvs *LKVS) A(name string, z *Zone) (isCNAME bool, CNAMEHost string, answe
 
 	if isCNAME {
 		for _, _r := range z.Records {
-			if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+			if _r.Type == "CNAME" && _r.Name == subDomain {
 				r := new(dns.CNAME)
 				r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
 					Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-				r.Target = _r.Host
+				r.Target = _r.Value
 				answers = append(answers, r)
 			} else {
 				continue
@@ -917,11 +717,11 @@ func (lkvs *LKVS) A(name string, z *Zone) (isCNAME bool, CNAMEHost string, answe
 		}
 	} else {
 		for _, _r := range z.Records {
-			if _r.Type == "A" && _r.SubDomain == subDomain {
+			if _r.Type == "A" && _r.Name == subDomain {
 				r := new(dns.A)
 				r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeA,
 					Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-				r.A = _r.IP
+				r.A = net.ParseIP(_r.Value)
 				answers = append(answers, r)
 			} else {
 				continue
@@ -938,7 +738,7 @@ func (lkvs *LKVS) AAAA(name string, z *Zone) (answers, extras []dns.RR) {
 
 	isWildcard := true
 	for _, _r := range z.Records {
-		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
+		if _r.Type == "AAAA" && _r.Name == subDomain {
 			isWildcard = false
 		}
 	}
@@ -947,11 +747,11 @@ func (lkvs *LKVS) AAAA(name string, z *Zone) (answers, extras []dns.RR) {
 	}
 
 	for _, _r := range z.Records {
-		if _r.Type == "AAAA" && _r.SubDomain == subDomain {
+		if _r.Type == "AAAA" && _r.Name == subDomain {
 			r := new(dns.AAAA)
 			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeAAAA,
 				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.AAAA = _r.IP
+			r.AAAA = net.ParseIP(_r.Value)
 			answers = append(answers, r)
 		} else {
 			continue
@@ -964,11 +764,11 @@ func (lkvs *LKVS) AAAA(name string, z *Zone) (answers, extras []dns.RR) {
 func (lkvs *LKVS) TXT(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
-		if _r.Type == "TXT" && _r.SubDomain == subDomain {
+		if _r.Type == "TXT" && _r.Name == subDomain {
 			r := new(dns.TXT)
 			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeTXT,
 				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Txt = append(r.Txt, _r.Text)
+			r.Txt = append(r.Txt, _r.Value)
 			answers = append(answers, r)
 		} else {
 			continue
@@ -981,11 +781,11 @@ func (lkvs *LKVS) TXT(name string, z *Zone) (answers, extras []dns.RR) {
 func (lkvs *LKVS) CNAME(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
-		if _r.Type == "CNAME" && _r.SubDomain == subDomain {
+		if _r.Type == "CNAME" && _r.Name == subDomain {
 			r := new(dns.CNAME)
 			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
 				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Target = _r.Host
+			r.Target = _r.Value
 			answers = append(answers, r)
 		} else {
 			continue
@@ -998,12 +798,12 @@ func (lkvs *LKVS) CNAME(name string, z *Zone) (answers, extras []dns.RR) {
 func (lkvs *LKVS) MX(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
-		if _r.Type == "MX" && _r.SubDomain == subDomain {
+		if _r.Type == "MX" && _r.Name == subDomain {
 			r := new(dns.MX)
 			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeMX,
 				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Mx = _r.Host
-			r.Preference = _r.Preference
+			r.Mx = _r.Value
+			r.Preference = _r.Priority
 			answers = append(answers, r)
 		} else {
 			continue
@@ -1013,79 +813,47 @@ func (lkvs *LKVS) MX(name string, z *Zone) (answers, extras []dns.RR) {
 }
 
 // A query of type SRV
-func (lkvs *LKVS) SRV(name string, z *Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Zone)
-	for _, _r := range z.Records {
-		if _r.Type == "SRV" && _r.SubDomain == subDomain {
-			r := new(dns.SRV)
-			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSRV,
-				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Target = _r.Target
-			r.Port = _r.Port
-			r.Priority = _r.Priority
-			r.Weight = _r.Weight
-			answers = append(answers, r)
-		} else {
-			continue
-		}
-	}
-	return
-}
+// TODO support SRV query
 
 // A query of type CAA
-func (lkvs *LKVS) CAA(name string, z *Zone) (answers, extras []dns.RR) {
-	subDomain := FindSubDomain(name, z.Zone)
-	for _, _r := range z.Records {
-		if _r.Type == "CAA" && _r.SubDomain == subDomain {
-			r := new(dns.CAA)
-			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCAA,
-				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Flag = _r.Flag
-			r.Tag = _r.Tag
-			r.Value = _r.Value
-			answers = append(answers, r)
-		} else {
-			continue
-		}
-	}
-	return
-}
+// TODO support CAA query
 
-func (lkvs *LKVS) SOA(name string, z *Zone) (answers, extras []dns.RR) {
-	r := new(dns.SOA)
-	if z.SOA.Ns == "" {
-		r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSOA,
-			Class: dns.ClassINET, Ttl: defaultTTL}
-		r.Ns = "ns1." + name
-		r.Mbox = "hostmaster." + name
-		r.Refresh = 86400
-		r.Retry = 7200
-		r.Expire = 3600
-		r.Minttl = defaultTTL
-	} else {
-		r.Hdr = dns.RR_Header{Name: z.Zone, Rrtype: dns.TypeSOA,
-			Class: dns.ClassINET, Ttl: CheckTTL(z.SOA.TTL)}
-		r.Ns = z.SOA.Ns
-		r.Mbox = z.SOA.MBox
-		r.Refresh = z.SOA.Refresh
-		r.Retry = z.SOA.Retry
-		r.Expire = z.SOA.Expire
-		r.Minttl = z.SOA.MinTTL
-	}
-	r.Serial = lkvs.serial()
-	answers = append(answers, r)
-	return
-}
+// TODO support SOA query
+//func (lkvs *LKVS) SOA(name string, z *Zone) (answers, extras []dns.RR) {
+//	r := new(dns.SOA)
+//	if z.SOA.Ns == "" {
+//		r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeSOA,
+//			Class: dns.ClassINET, Ttl: defaultTTL}
+//		r.Ns = "ns1." + name
+//		r.Mbox = "hostmaster." + name
+//		r.Refresh = 86400
+//		r.Retry = 7200
+//		r.Expire = 3600
+//		r.Minttl = defaultTTL
+//	} else {
+//		r.Hdr = dns.RR_Header{Name: z.Zone, Rrtype: dns.TypeSOA,
+//			Class: dns.ClassINET, Ttl: CheckTTL(z.SOA.TTL)}
+//		r.Ns = z.SOA.Ns
+//		r.Mbox = z.SOA.MBox
+//		r.Refresh = z.SOA.Refresh
+//		r.Retry = z.SOA.Retry
+//		r.Expire = z.SOA.Expire
+//		r.Minttl = z.SOA.MinTTL
+//	}
+//	r.Serial = lkvs.serial()
+//	answers = append(answers, r)
+//	return
+//}
 
 // A query of type NS
 func (lkvs *LKVS) NS(name string, z *Zone) (answers, extras []dns.RR) {
 	subDomain := FindSubDomain(name, z.Zone)
 	for _, _r := range z.Records {
-		if _r.Type == "NS" && _r.SubDomain == subDomain {
+		if _r.Type == "NS" && _r.Name == subDomain {
 			r := new(dns.NS)
 			r.Hdr = dns.RR_Header{Name: name, Rrtype: dns.TypeCNAME,
 				Class: dns.ClassINET, Ttl: CheckTTL(_r.TTL)}
-			r.Ns = _r.Host
+			r.Ns = _r.Value
 			answers = append(answers, r)
 		} else {
 			continue
@@ -1094,7 +862,7 @@ func (lkvs *LKVS) NS(name string, z *Zone) (answers, extras []dns.RR) {
 	return
 }
 
-func (lkvs *LKVS) UserIsExist(username string) (*User, bool) {
+func (lkvs *LKVS) UserIsExistByName(username string) (*User, bool) {
 	u := User{}
 	ok := true
 	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
@@ -1108,6 +876,27 @@ func (lkvs *LKVS) UserIsExist(username string) (*User, bool) {
 		return nil
 	})
 	return &u, ok
+}
+
+func (lkvs *LKVS) UserIsExistById(id string) (u *User, ok bool) {
+	ok = false
+	_ = lkvs.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BucketNameForUser))
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			u = &User{}
+			err := json.Unmarshal(v, u)
+			if err != nil {
+				return err
+			}
+			if u.ID == id {
+				ok = true
+				break
+			}
+		}
+		return nil
+	})
+	return
 }
 
 func (lkvs *LKVS) CheckAuth(u *User) bool {

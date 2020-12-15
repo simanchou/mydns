@@ -74,9 +74,10 @@ func setup(c *caddy.Controller) error {
 	}
 	// init admin user
 	u := NewUser("admin", "123456")
-	u.Nickname = "超级管理员"
-	u.Role = "administrator"
-	_, isExist := RLKVS.UserIsExist(u.Username)
+	u.Avatar = "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif"
+	u.Nickname = "super administrator"
+	u.Roles = append(u.Roles, "admin")
+	_, isExist := RLKVS.UserIsExistByName(u.Username)
 	if !isExist {
 		err = RLKVS.Save(BucketNameForUser, u)
 		if err != nil {

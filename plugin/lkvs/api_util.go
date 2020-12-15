@@ -41,6 +41,7 @@ const (
 	ERROR_GET_RECORDS_FAIL         = 10028
 	ERROR_GET_RECORD_FAIL          = 10029
 	ERROR_CAN_NOT_DELETE_NS_RECORD = 10030
+	ERROR_INVALID_IP               = 10031
 
 	ERROR_ADD_USER_FAIL      = 20001
 	ERROR_EXIST_USER         = 20002
@@ -48,6 +49,7 @@ const (
 	ERROR_EDIT_USER_FAIL     = 20004
 	ERROR_OLD_PASSWORD_WRONG = 20005
 	ERROR_DELETE_USER_FAIL   = 20006
+	ERROR_USER_INACTIVE      = 20007
 
 	ERROR_AUTH_MISS_TOKEN           = 30001
 	ERROR_AUTH_CHECK_TOKEN_FAIL     = 30002
@@ -101,6 +103,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR_EDIT_USER_FAIL:                          "编辑用户失败",
 	ERROR_OLD_PASSWORD_WRONG:                      "旧密码错误",
 	ERROR_DELETE_USER_FAIL:                        "删除用户失败",
+	ERROR_USER_INACTIVE:                           "用户已被禁用",
 	ERROR_AUTH_MISS_TOKEN:                         "缺失token,访问此url需要先认证授权",
 	ERROR_AUTH_CHECK_TOKEN_FAIL:                   "Token鉴权失败",
 	ERROR_AUTH_CHECK_TOKEN_TIMEOUT:                "Token已超时",
@@ -116,6 +119,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR_MASTER_RESPONSE_NOT_OK:                  "主服务器返回的http状态码不是200",
 	ERROR_MASTER_RESPONSE_READ_FAIL:               "主服务器的返回内容读取以失败",
 	ERROR_MASTER_RESPONSE_PARSE_FAIL:              "主服务器的返回内容解析失败",
+	ERROR_INVALID_IP:                              "非法IP",
 }
 
 // GetMsg get error msg of error code
@@ -177,7 +181,7 @@ type Claims struct {
 // GenerateToken generate token
 func GenerateToke(u *User) (string, error) {
 	nowTime := time.Now()
-	expireTime := nowTime.Add(3 * time.Hour)
+	expireTime := nowTime.Add(1 * time.Hour)
 
 	claims := Claims{
 		Username: u.Username,
@@ -240,7 +244,7 @@ func JWT() gin.HandlerFunc {
 		}
 
 		if code != SUCCESS {
-			c.JSON(http.StatusUnauthorized, gin.H{
+			c.JSON(http.StatusOK, gin.H{
 				"code": code,
 				"msg":  GetCodeMsg(code),
 				"data": data,

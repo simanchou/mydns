@@ -73,12 +73,12 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		answers, extras = lkvs.CNAME(qname, zone)
 	case "MX":
 		answers, extras = lkvs.MX(qname, zone)
-	case "SRV":
-		answers, extras = lkvs.SRV(qname, zone)
-	case "CAA":
-		answers, extras = lkvs.CAA(qname, zone)
-	case "SOA":
-		answers, extras = lkvs.SOA(qname, zone)
+	//case "SRV":
+	//	answers, extras = lkvs.SRV(qname, zone)
+	//case "CAA":
+	//	answers, extras = lkvs.CAA(qname, zone)
+	//case "SOA":
+	//	answers, extras = lkvs.SOA(qname, zone)
 	case "NS":
 		answers, extras = lkvs.NS(qname, zone)
 	default:
