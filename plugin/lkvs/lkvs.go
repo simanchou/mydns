@@ -615,7 +615,7 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 }
 
 func (lkvs *LKVS) getRsync() (sc int, err error) {
-	master := fmt.Sprintf("http://%s/rsync", lkvs.Master)
+	master := fmt.Sprintf("http://%s/admin/rsync", lkvs.Master)
 	httpClient := &http.Client{}
 	req, err := http.NewRequest("GET", master, nil)
 	if err != nil {
