@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func q(queryName, nameserver, queryType, queryClass string)(answers, extras []dns.RR) {
+func q(queryName, nameserver, queryType, queryClass string) (answers, extras []dns.RR) {
 	var (
 		qtype  []uint16
 		qclass []uint16
@@ -22,7 +22,7 @@ func q(queryName, nameserver, queryType, queryClass string)(answers, extras []dn
 	if len(queryType) == 0 {
 		qtype = append(qtype, dns.TypeA)
 	} else {
-		if k, ok := dns.StringToType[strings.ToUpper(queryType)];ok {
+		if k, ok := dns.StringToType[strings.ToUpper(queryType)]; ok {
 			qtype = append(qtype, k)
 		} else {
 			qtype = append(qtype, dns.TypeNULL)
@@ -31,7 +31,7 @@ func q(queryName, nameserver, queryType, queryClass string)(answers, extras []dn
 	if len(queryClass) == 0 {
 		qclass = append(qclass, dns.ClassINET)
 	} else {
-		if k, ok := dns.StringToClass[strings.ToUpper(queryClass)];ok{
+		if k, ok := dns.StringToClass[strings.ToUpper(queryClass)]; ok {
 			qclass = append(qclass, k)
 		} else {
 			qclass = append(qclass, dns.ClassNONE)
@@ -61,13 +61,13 @@ func q(queryName, nameserver, queryType, queryClass string)(answers, extras []dn
 	}
 	c := new(dns.Client)
 	c.Net = "udp"
-	c.DialTimeout = 2*time.Second
-	c.ReadTimeout = 2*time.Second
-	c.WriteTimeout = 2*time.Second
+	c.DialTimeout = 2 * time.Second
+	c.ReadTimeout = 2 * time.Second
+	c.WriteTimeout = 2 * time.Second
 
 	m := &dns.Msg{
 		MsgHdr: dns.MsgHdr{
-			Opcode:            dns.OpcodeQuery,
+			Opcode: dns.OpcodeQuery,
 		},
 		Question: make([]dns.Question, 1),
 	}
@@ -93,11 +93,11 @@ func q(queryName, nameserver, queryType, queryClass string)(answers, extras []dn
 			answers = r.Answer
 			extras = r.Extra
 		default:
-			fmt.Printf(";; %s\n", err.Error())
+			logger.Errorf(";; %s", err.Error())
 			continue
 		}
 		if r.Id != m.Id {
-			fmt.Fprintf(os.Stderr, "Id mismatch\n")
+			logger.Error(os.Stderr, "Id mismatch")
 			return
 		}
 

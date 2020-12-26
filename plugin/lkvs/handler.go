@@ -2,7 +2,6 @@ package lkvs
 
 import (
 	"context"
-	"fmt"
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
@@ -11,9 +10,9 @@ import (
 // ServeDNS implements the plugin.Handler interface
 func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
-	fmt.Printf("r: %#v\n", r)
-	fmt.Printf("state: %#v\n", state)
-	fmt.Printf("state.writer: %#v\n", state.W)
+	logger.Debugf("request: %#v", r)
+	logger.Debugf("state: %#v", state)
+	logger.Debugf("state.writer: %#v", state.W)
 
 	qname := state.Name()
 	qtype := state.Type()
@@ -23,14 +22,14 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	if err != nil {
 		return dns.RcodeBadName, err
 	}
-	fmt.Println("qname in lkvs: ", qname)
-	fmt.Println("qtype in lkvs: ", qtype)
-	fmt.Println("zonsName in lkvs:", zoneNames)
+	logger.Debug("query name in lkvs: ", qname)
+	logger.Debug("query type in lkvs: ", qtype)
+	logger.Debug("zones name in lkvs:", zoneNames)
 
 	zoneName := plugin.Zones(zoneNames).Matches(qname)
-	fmt.Println("zone in lkvs: ", zoneName)
+	logger.Debug("zone in lkvs: ", zoneName)
 	if zoneName == "" {
-		fmt.Println("zone in lkvs is nil...")
+		logger.Debug("zone in lkvs is nil...forward to next handler")
 		return plugin.NextOrFailure(qname, lkvs.Next, ctx, w, r)
 	}
 
@@ -40,7 +39,6 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	}
 
 	zone := zones[zoneName]
-	//subDomain := FindSubDomain(qname, zoneName)
 
 	answers := make([]dns.RR, 0, 10)
 	extras := make([]dns.RR, 0, 10)
@@ -90,12 +88,11 @@ func (lkvs *LKVS) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	m.Authoritative, m.RecursionAvailable, m.Compress = true, true, true
 	m.Answer = append(m.Answer, answers...)
 	m.Extra = append(m.Extra, extras...)
-	fmt.Printf("answers: %#v\n", answers)
-	fmt.Printf("m.answers: %#v\n", m.Answer)
+	logger.Debug("answers: %#v\n", answers)
+	logger.Debug("m.answers: %#v\n", m.Answer)
 
 	state.SizeAndDo(m)
 	m = state.Scrub(m)
-	fmt.Printf("%#v\n", m.Answer)
 	w.WriteMsg(m)
 	return dns.RcodeSuccess, nil
 }

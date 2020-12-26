@@ -28,17 +28,15 @@ const (
 
 // LKVS local key-value storage
 type LKVS struct {
-	Next          plugin.Handler
-	DB            *bolt.DB
-	DBFile        string
-	DBReadTimeout int
-	APIEngine     *gin.Engine
-	APIPort       int
-	TTL           uint32
-	Master        string
-	Slave         []string
-	//ZonesName        []string
-	//ZonesWithRecords map[string]Zone
+	Next           plugin.Handler
+	DB             *bolt.DB
+	DBFile         string
+	DBReadTimeout  int
+	APIEngine      *gin.Engine
+	APIPort        int
+	TTL            uint32
+	Master         string
+	Slave          []string
 	LastZoneUpdate time.Time
 }
 

@@ -1,12 +1,10 @@
 package lkvs
 
 import (
-	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/caddyserver/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -33,7 +31,7 @@ func setup(c *caddy.Controller) error {
 	if RLKVS.DBFile == "" {
 		absDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 		if err != nil {
-			log.Fatalf("get current dir of db file fail, error: %s\n", err)
+			logger.Fatalf("get current dir of db file fail, error: %s", err.Error())
 		}
 		RLKVS.DBFile = path.Join(absDir, "dns.db")
 	}
@@ -45,9 +43,9 @@ func setup(c *caddy.Controller) error {
 		RLKVS.DBFile,
 		0600,
 		&bolt.Options{Timeout: time.Duration(RLKVS.DBReadTimeout) * time.Second})
-	log.Println("begin to open db file...")
+	logger.Debug("begin to open db file...")
 	if err != nil {
-		log.Fatalln("open db fail")
+		logger.Fatalln("open db fail")
 	}
 
 	// init db for domain
@@ -59,7 +57,7 @@ func setup(c *caddy.Controller) error {
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("init db for domain fail, error: %s", err)
+		logger.Fatalf("init db for domain fail, error: %s", err.Error())
 	}
 	// init db for user
 	err = RLKVS.DB.Update(func(tx *bolt.Tx) error {
@@ -70,7 +68,7 @@ func setup(c *caddy.Controller) error {
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("init db for user fail, error: %s", err)
+		logger.Fatalf("init db for user fail, error: %s", err.Error())
 	}
 	// init admin user
 	u := NewUser("admin", "123456")
@@ -81,7 +79,7 @@ func setup(c *caddy.Controller) error {
 	if !isExist {
 		err = RLKVS.Save(BucketNameForUser, u)
 		if err != nil {
-			log.Fatalf("init admin user fail, error: %s", err.Error())
+			logger.Fatalf("init admin user fail, error: %s", err.Error())
 		}
 	}
 
@@ -93,20 +91,20 @@ func setup(c *caddy.Controller) error {
 	if RLKVS.Master != "" {
 		go func() {
 			for {
-				log.Printf("begin to rsync from master %q\n", RLKVS.Master)
+				logger.Debugf("begin to rsync from master %q", RLKVS.Master)
 				sc, err := RLKVS.getRsync()
 				if err != nil {
-					log.Printf("rsync from master fail, error: %s\n", err)
+					logger.Errorf("rsync from master fail, error: %s", err.Error())
 				} else {
-					log.Printf("rsync from master %q successful, zone total: %d\n", RLKVS.Master, sc)
+					logger.Debugf("rsync from master %q successful, zone total: %d", RLKVS.Master, sc)
 				}
-				log.Printf("next rsync after 60 seconds")
+				logger.Debugf("next rsync after 60 seconds")
 				time.Sleep(60 * time.Second)
 			}
 		}()
 	}
 
-	fmt.Printf("%#v\n", RLKVS)
+	logger.Debugf("lkvs init successful, %#v", RLKVS)
 
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		RLKVS.Next = next

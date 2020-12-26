@@ -30,6 +30,7 @@ const (
 	ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL = 10009
 	ERROR_EXPORT_ZONE_FAIL                        = 10010
 	ERROR_IMPORT_ZONE_FAIL                        = 10011
+	ERROR_ZONE_IS_PUBLIC                          = 10012
 
 	ERROR_EXIST_RECORD             = 10021
 	ERROR_EXIST_RECORD_FAIL        = 10022
@@ -87,6 +88,7 @@ var CodeMsgFlags = map[int]string{
 	ERROR_CAN_NOT_DELETE_ZONE_WHEN_RECORD_NOT_NIL: "还有记录时不能删除域名",
 	ERROR_EXPORT_ZONE_FAIL:                        "导出域名失败",
 	ERROR_IMPORT_ZONE_FAIL:                        "导入域名失败",
+	ERROR_ZONE_IS_PUBLIC:                          "公网域名只允许超级管理员添加",
 	ERROR_EXIST_RECORD:                            "该记录已存在",
 	ERROR_NOT_EXIST_RECORD:                        "该记录不存在",
 	ERROR_ADD_RECORD_FAIL:                         "新增记录失败",
