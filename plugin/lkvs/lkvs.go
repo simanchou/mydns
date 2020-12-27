@@ -612,53 +612,79 @@ func (lkvs *LKVS) DeleteZoneInDB(zoneName string) (err error) {
 	return err
 }
 
-func (lkvs *LKVS) getRsync() (sc int, err error) {
+func (lkvs *LKVS) getRsync() (zc, uc int, err error) {
 	master := fmt.Sprintf("http://%s/admin/rsync", lkvs.Master)
 	httpClient := &http.Client{}
 	req, err := http.NewRequest("GET", master, nil)
 	if err != nil {
-		return sc, err
+		return zc, uc, err
 	}
 	res, err := httpClient.Do(req)
 	if err != nil {
-		return sc, err
+		return zc, uc, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode == 403 {
-		return sc, fmt.Errorf("forbidden by master, self ip must be in \"slave\" config of the master")
+		return zc, uc, fmt.Errorf("forbidden by master, self ip must be in \"slave\" config of the master")
 	}
 
 	if res.StatusCode != 200 {
-		return sc, fmt.Errorf("http code from master is %d", res.StatusCode)
+		return zc, uc, fmt.Errorf("http code from master is %d", res.StatusCode)
 	}
 
 	resBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return sc, err
+		return zc, uc, err
+	}
+
+	type data struct {
+		Zones map[string]*Zone `json:"zones"`
+		Users []*User          `json:"users"`
 	}
 
 	type respFromMaster struct {
-		Code int              `json:"code"`
-		Msg  string           `json:"msg"`
-		Data map[string]*Zone `json:"data"`
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+		Data data   `json:"data"`
 	}
 
-	rfm := &respFromMaster{Data: make(map[string]*Zone)}
+	rfm := &respFromMaster{}
 	err = json.Unmarshal(resBody, &rfm)
 	if err != nil {
-		return sc, err
+		return zc, uc, err
 	}
 
 	// delete zone which not in master
 	oldzones, err := lkvs.GetAllZones()
 	if len(oldzones) > 0 {
-		if len(rfm.Data) > 0 {
+		if len(rfm.Data.Zones) > 0 {
 			for on := range oldzones {
-				if _, ok := rfm.Data[on]; !ok {
+				if _, ok := rfm.Data.Zones[on]; !ok {
 					err = lkvs.DeleteZoneInDB(on)
 					if err != nil {
-						return sc, err
+						return zc, uc, err
+					}
+				}
+			}
+		}
+	}
+	// delete user which not in master
+	oldUsers := lkvs.GetAllUsers()
+	if len(oldUsers) > 0 {
+		if len(rfm.Data.Users) > 0 {
+			notExist := true
+			for _, o := range oldUsers {
+				for _, n := range rfm.Data.Users {
+					if n.Username == o.Username {
+						notExist = false
+						break
+					}
+				}
+				if notExist {
+					err = lkvs.DeleteUserInDB(o.Username)
+					if err != nil {
+						return zc, uc, err
 					}
 				}
 			}
@@ -666,18 +692,29 @@ func (lkvs *LKVS) getRsync() (sc int, err error) {
 	}
 
 	// save zone from master
-	if len(rfm.Data) > 0 {
-		for _, zone := range rfm.Data {
+	if len(rfm.Data.Zones) > 0 {
+		for _, zone := range rfm.Data.Zones {
 			err = lkvs.Save(BucketNameForDomain, zone)
 			if err != nil {
-				return sc, err
+				return zc, uc, err
 			} else {
-				sc++
+				zc++
+			}
+		}
+	}
+	// save user from master
+	if len(rfm.Data.Users) > 0 {
+		for _, user := range rfm.Data.Users {
+			err = lkvs.Save(BucketNameForUser, user)
+			if err != nil {
+				return zc, uc, err
+			} else {
+				uc++
 			}
 		}
 	}
 
-	return sc, nil
+	return zc, uc, nil
 }
 
 // A query of type A

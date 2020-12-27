@@ -21,7 +21,6 @@ require (
 	github.com/dnstap/golang-dnstap v0.0.0-20170829151710-2cf77a2b5e11
 	github.com/farsightsec/golang-framestream v0.0.0-20181102145529-8a0cb8ba8710
 	github.com/garyburd/redigo v1.6.0
-	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.5.0
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect

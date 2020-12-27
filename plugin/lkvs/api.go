@@ -797,25 +797,29 @@ func (lkvs *LKVS) apiGetSummary(c *gin.Context) {
 // accept slave's rsync request
 func (lkvs *LKVS) rsync(c *gin.Context) {
 	g := Gin{C: c}
+	var err error
 
-	slaveIP, _, err := net.SplitHostPort(strings.TrimSpace(c.Request.RemoteAddr))
-	if err != nil {
-		g.Response(http.StatusOK, ERROR_GET_SLAVE_IP_FAIL, nil)
-		return
-	}
-
+	slaveIP := GetClientIP(c)
 	if !lkvs.slaveIsAllow(slaveIP) {
 		g.Response(http.StatusForbidden, ERROR_SLAVE_IS_NOT_ALLOW, nil)
 		return
 	}
 
-	zones, err := lkvs.GetAllZones()
+	type rDataStruct struct {
+		Zones map[string]*Zone `json:"zones"`
+		Users []*User          `json:"users"`
+	}
+
+	rData := &rDataStruct{}
+
+	rData.Zones, err = lkvs.GetAllZones()
 	if err != nil {
 		g.Response(http.StatusOK, ERROR_GET_ZONES_FAIL, nil)
 		return
 	}
+	rData.Users = lkvs.GetAllUsers()
 
-	g.Response(http.StatusOK, SUCCESS, zones)
+	g.Response(http.StatusOK, SUCCESS, rData)
 
 }
 
@@ -827,7 +831,18 @@ func (lkvs *LKVS) slaveIsAllow(ip string) (ok bool) {
 			break
 		}
 	}
-	if allow == 1 {
+
+	for _, i := range lkvs.Slave {
+		if _ip := net.ParseIP(i); _ip == nil {
+			_, _net, _ := net.ParseCIDR(i)
+			if _net.Contains(net.ParseIP(ip)) {
+				allow++
+				break
+			}
+		}
+	}
+
+	if allow > 0 {
 		ok = true
 	} else {
 		ok = false

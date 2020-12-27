@@ -5,6 +5,7 @@ import (
 	"github.com/caddyserver/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -23,7 +24,8 @@ func init() {
 }
 
 func setup(c *caddy.Controller) error {
-	err := lkvsParse(c)
+	var err error
+	err = lkvsParse(c)
 	if err != nil {
 		return err
 	}
@@ -88,15 +90,36 @@ func setup(c *caddy.Controller) error {
 
 	go RLKVS.APIStart()
 
+	if RLKVS.Master == "" {
+		RLKVS.Master = os.Getenv("MASTER")
+	}
+
+	if len(RLKVS.Slave) == 0 {
+		// read value from env for slave if Corefile is miss
+		slave := os.Getenv("SLAVE")
+		if slave != "" {
+			RLKVS.Slave = strings.Split(slave, ",")
+			if len(RLKVS.Slave) > 0 {
+				for _, i := range RLKVS.Slave {
+					if _, _, errNet := net.ParseCIDR(i); errNet != nil {
+						if _ip := net.ParseIP(i); _ip == nil {
+							logger.Fatalf("invalid ip %s", i)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	if RLKVS.Master != "" {
 		go func() {
 			for {
 				logger.Debugf("begin to rsync from master %q", RLKVS.Master)
-				sc, err := RLKVS.getRsync()
+				zc, uc, err := RLKVS.getRsync()
 				if err != nil {
 					logger.Errorf("rsync from master fail, error: %s", err.Error())
 				} else {
-					logger.Debugf("rsync from master %q successful, zone total: %d", RLKVS.Master, sc)
+					logger.Debugf("rsync from master %q successful, zone total: %d, user total: %d", RLKVS.Master, zc, uc)
 				}
 				logger.Debugf("next rsync after 60 seconds")
 				time.Sleep(60 * time.Second)
@@ -141,6 +164,13 @@ func lkvsParse(c *caddy.Controller) (err error) {
 						return c.ArgErr()
 					}
 					RLKVS.Slave = strings.Split(c.Val(), ",")
+					for _, i := range RLKVS.Slave {
+						if _, _, errNet := net.ParseCIDR(i); errNet != nil {
+							if _ip := net.ParseIP(i); _ip == nil {
+								return c.Errf("invalid ip '%s'", i)
+							}
+						}
+					}
 				case "timeout":
 					if !c.NextArg() {
 						return c.ArgErr()

@@ -2,6 +2,7 @@ package lkvs
 
 import (
 	"encoding/base64"
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"os"
@@ -54,4 +55,26 @@ func IsPublicDomain(name string) (is bool) {
 		is = false
 	}
 	return is
+}
+
+func GetClientIP(c *gin.Context) (ip string) {
+	ip = strings.TrimSpace(c.Request.Header.Get("X-Real-Ip"))
+	if len(ip) > 0 {
+		return ip
+	}
+
+	ip = c.Request.Header.Get("X-Forwarded-For")
+	if index := strings.IndexByte(ip, ','); index >= 0 {
+		ip = ip[0:index]
+	}
+	ip = strings.TrimSpace(ip)
+	if len(ip) > 0 {
+		return ip
+	}
+
+	var err error
+	if ip, _, err = net.SplitHostPort(strings.TrimSpace(c.Request.RemoteAddr)); err == nil {
+		return ip
+	}
+	return ip
 }

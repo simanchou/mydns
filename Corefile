@@ -8,10 +8,10 @@
   #  fallthrough
   #}
   lkvs {
-    db_file /home/zhao/go/src/mydns/dns.db
-    api_port 5500
+    #db_file /home/zhao/go/src/mydns/dns.db
+    #api_port 5500
     #master 192.168.1.100:5500
-    slave 192.168.1.2,192.168.1.133
+    #slave 192.168.1.2,192.168.1.133,127.0.0.1,172.20.10.4
   }
 
   forward . 8.8.8.8:53
