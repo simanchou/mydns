@@ -1,0 +1,278 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "xiao bao bind master",
+    "description": "REPLACE_BY_SCRIPT_FOR_MULTI_LINE",
+    "version": "0.1"
+  },
+  "host": "127.0.0.2",
+  "basePath": "/api",
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/domain": {
+      "post": {
+        "summary": "add domain",
+        "operationId": "DomainAddHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BaseResp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Zone"
+            }
+          }
+        ],
+        "tags": [
+          "master-api"
+        ]
+      }
+    },
+    "/domain/{name}": {
+      "delete": {
+        "summary": "del domain",
+        "operationId": "DomainDelHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BaseResp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "master-api"
+        ]
+      }
+    },
+    "/record": {
+      "delete": {
+        "summary": "del record",
+        "operationId": "RecordDelHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BaseResp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Zone"
+            }
+          }
+        ],
+        "tags": [
+          "master-api"
+        ]
+      },
+      "post": {
+        "summary": "add record",
+        "operationId": "RecordAddHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BaseResp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Zone"
+            }
+          }
+        ],
+        "tags": [
+          "master-api"
+        ]
+      },
+      "put": {
+        "summary": "edit record",
+        "operationId": "RecordEditHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/BaseResp"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Zone"
+            }
+          }
+        ],
+        "tags": [
+          "master-api"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "BaseResp": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      },
+      "title": "BaseResp",
+      "required": [
+        "ok"
+      ]
+    },
+    "Domain": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "Domain",
+      "required": [
+        "name"
+      ]
+    },
+    "Record": {
+      "type": "object",
+      "properties": {
+        "record_type": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "points_to": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "mx_priority": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "srv_service": {
+          "type": "string"
+        },
+        "srv_protocol": {
+          "type": "string"
+        },
+        "srv_name": {
+          "type": "string"
+        },
+        "srv_target": {
+          "type": "string"
+        },
+        "srv_priority": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "srv_weight": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "srv_port": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "caa_name": {
+          "type": "string"
+        },
+        "caa_flags": {
+          "type": "string"
+        },
+        "caa_tag": {
+          "type": "string"
+        },
+        "caa_value": {
+          "type": "string"
+        }
+      },
+      "title": "Record",
+      "required": [
+        "record_type",
+        "ttl"
+      ]
+    },
+    "Zone": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "string"
+        },
+        "serial": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Record"
+          }
+        }
+      },
+      "title": "Zone",
+      "required": [
+        "domain",
+        "serial",
+        "records"
+      ]
+    }
+  },
+  "securityDefinitions": {
+    "apiKey": {
+      "type": "apiKey",
+      "description": "Enter JWT Bearer token **_only_**",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "apiKey": []
+    }
+  ]
+}

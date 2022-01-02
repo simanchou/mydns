@@ -1,0 +1,6 @@
+$TTL 600
+@               IN  SOA     ns1.mydns.local. admin.mydns.local.( 2017072601 3H 15M 1W 1D )
+@               IN  NS      ns1.mydns.local.
+@               IN  NS      ns2.mydns.local.
+ns1             IN  A       127.0.0.1
+ns2             IN  A       127.0.0.2

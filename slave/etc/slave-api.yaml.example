@@ -1,0 +1,7 @@
+Name: slave-api
+Host: 0.0.0.0
+Port: 52099
+Log:
+  Level: error
+CertFile: /app/ssl/cert.pem
+KeyFile: /app/ssl/key.pem

@@ -1,0 +1,9 @@
+zone "." {
+    type hint;
+    file "named.ca";
+};
+
+zone "mydns.local" IN {
+    type master;
+    file "mydns.local.zone";
+};

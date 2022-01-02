@@ -1,0 +1,9 @@
+Name: master-master
+Host: 0.0.0.0
+Port: 52099
+CertFile: /app/ssl/cert.pem
+KeyFile: /app/ssl/key.pem
+Log:
+  Level: error
+ZoneTemplate: /app/etc/zone.tpl
+ZoneSavePath: /var/cache/bind

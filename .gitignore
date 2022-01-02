@@ -1,0 +1,5 @@
+.idea
+master/master
+master/etc/master-api.yaml
+slave/slave
+slave/etc/slave-api.yaml

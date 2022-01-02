@@ -1,0 +1,39 @@
+FROM golang:1.17 as builder
+
+ENV GO111MODULE=on
+WORKDIR /app
+
+COPY . .
+RUN cd slave \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app/slave_api .
+
+FROM alpine:3.15.0
+
+LABEL org.opencontainers.image.authors="simanchou"
+
+RUN mkdir /app
+
+WORKDIR /app
+
+EXPOSE 53 53/udp 52099
+
+RUN apk --update --no-cache add bind bind-dnssec-tools supervisor openssl \
+    && mkdir -p /etc/bind/acl \
+    && rm -rf /var/cache/apk/* \
+    && mkdir /etc/supervisor.d \
+    && mkdir /app/etc
+
+COPY docker/named/named.conf /etc/bind/named.conf
+COPY docker/named/named.ca /var/cache/bind/named.ca
+COPY docker/named/acl/lan /etc/bind/acl/lan
+COPY docker/named/etc/ /etc/bind/
+COPY docker/named/var /var/cache/bind/
+COPY docker/slave-entrypoint.sh .
+
+COPY docker/supervisor.d/slave.ini /etc/supervisor.d
+COPY --from=builder /app/slave_api .
+COPY slave/etc ./etc
+
+ENTRYPOINT ["/app/slave-entrypoint.sh"]
+
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]

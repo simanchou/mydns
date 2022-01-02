@@ -1,0 +1,17 @@
+logging {
+    channel stdout {
+        stderr;
+        severity info;
+        print-category no;
+        print-severity no;
+        print-time yes;
+    };
+	# Customize categories as needed
+    # To log everything, keep at least "default"
+    category security { stdout; };
+    category queries  { stdout; };
+    category dnssec   { stdout; };
+    category xfer-in  { stdout; };
+    category xfer-out { stdout; };
+    category default  { stdout; };
+};

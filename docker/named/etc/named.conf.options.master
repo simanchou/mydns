@@ -1,0 +1,18 @@
+options {
+    directory         "/var/cache/bind";
+    dump-file         "/var/cache/bind/cache_dump.db";
+    statistics-file   "/var/cache/bind/named_stats.txt";
+    pid-file          "/var/run/named/named.pid";
+    also-notify       { SLAVE_LIST };
+    allow-query       { lan; };
+    recursion         RECURSION_ENABLE;
+    notify            yes;
+    tcp-clients       1000;
+    allow-new-zones   yes;
+    forwarders {
+        1.1.1.1;
+        8.8.8.8;
+    };
+    dnssec-enable DNSSEC_ENABLE;
+    dnssec-validation DNSSEC_ENABLE;
+};

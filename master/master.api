@@ -1,0 +1,81 @@
+syntax = "v1"
+
+info(
+	title: "xiao bao bind master"
+	desc: "REPLACE_BY_SCRIPT_FOR_MULTI_LINE"
+	author: "Siman Chou"
+	email: "simanchou@gmail.com"
+	version: "0.1"
+)
+
+type (
+	BaseResp {
+		Ok bool `json:"ok"`
+	}
+)
+
+type Domain {
+	Name string `path:"name"`
+}
+
+type Zone {
+	Domain  string   `json:"domain"`
+	Serial  int64    `json:"serial"`
+	Records []Record `json:"records"`
+}
+
+type (
+	Record {
+		RecordType  string `json:"record_type"`
+		Host        string `json:"host,optional"`
+		PointsTo    string `json:"points_to,optional"`
+		Ttl         int64  `json:"ttl"`
+		MxPriority  int64  `json:"mx_priority,optional"`
+		SrvService  string `json:"srv_service,optional"`
+		SrvProtocol string `json:"srv_protocol,optional"`
+		SrvName     string `json:"srv_name,optional"`
+		SrvTarget   string `json:"srv_target,optional"`
+		SrvPriority int64  `json:"srv_priority,optional"`
+		SrvWeight   int64  `json:"srv_weight,optional"`
+		SrvPort     int64  `json:"srv_port,optional"`
+		CaaName     string `json:"caa_name,optional"`
+		CaaFlags    string `json:"caa_flags,optional"`
+		CaaTag      string `json:"caa_tag,optional"`
+		CaaValue    string `json:"caa_value,optional"`
+	}
+)
+
+@server (
+	middleware : Author  // author for request
+)
+service master-api {
+	@doc(
+		summary: "add domain"
+	)
+	@handler DomainAddHandler
+	post /domain (Zone) returns (BaseResp)
+	
+	@doc(
+		summary: "del domain"
+	)
+	@handler DomainDelHandler
+	delete /domain/:name returns (BaseResp)
+	
+	@doc(
+		summary: "add record"
+	)
+	@handler RecordAddHandler
+	post /record (Zone) returns (BaseResp)
+	
+	@doc(
+		summary: "edit record"
+	)
+	@handler RecordEditHandler
+	put /record (Zone) returns (BaseResp)
+	
+	@doc(
+		summary: "del record"
+	)
+	@handler RecordDelHandler
+	delete /record (Zone) returns (BaseResp)
+}

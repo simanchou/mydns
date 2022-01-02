@@ -1,0 +1,40 @@
+syntax = "v1"
+
+info(
+	title: "xiao bao bind slave"
+	desc: "REPLACE_BY_SCRIPT_FOR_MULTI_LINE"
+	author: "Siman Chou"
+	email: "simanchou@gmail.com"
+	version: "0.1"
+)
+
+type (
+	BaseResp {
+		Ok bool `json:"ok"`
+	}
+
+	AddReq {
+		Name string `form:"name"`
+	}
+
+	DelReq {
+		Name string `path:"name"`
+	}
+)
+
+@server (
+	middleware : Author  // author for request
+)
+service slave-api {
+	@doc(
+		summary: "add domain"
+	)
+	@handler DomainAddHandler
+	get /domain (AddReq) returns (BaseResp)
+	
+	@doc(
+		summary: "del domain"
+	)
+	@handler DomainDelHandler
+	delete /domain/:name returns (BaseResp)
+}
