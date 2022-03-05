@@ -1,7 +1,7 @@
 package response
 
 import (
-	"github.com/tal-tech/go-zero/rest/httpx"
+	"github.com/zeromicro/go-zero/rest/httpx"
 	"net/http"
 	"strings"
 )
